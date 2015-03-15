@@ -22,4 +22,4 @@ replace "string" with one of the following
 "fiveDofCamUp"
 "fiveDof"
 
-With the five DOF options roll action on the 3DMouse controls camera FOV. You can have any number of 3DMice working at the same time, I usually have the left 3DMouse for 6DOF and the right 3DMouse for 5DOF with FOV control.
+With the five DOF options roll action on the 3DMouse controls camera FOV. You can have any number of 3DMice working at the same time, I usually have the left 3DMouse for 6DOF and the right 3DMouse for 5DOF with FOV control. When you reboot the computer often times the 3DMice change order in the GamePad array, but all you have to do is swap device numbers in the controllers array to rectify.
