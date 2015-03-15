@@ -37,9 +37,13 @@ Forward   Up
 // Rotate functions
 //
 
+//rotateVector logic from https://code.google.com/p/earth-api-samples/source/browse/trunk/lib/math3d.js
+//http://www.apache.org/licenses/LICENSE-2.0
+
 function rotateVector(rotatee,rotater,angle)
 {
-	//rotatee: vector, rotatee: vector
+	//rotatee: unit vector, rotatee: unit vector, angle:radians
+	//CCW looking from vector tip to vector base
 	var CC3=Cesium.Cartesian3;var rotated=new CC3();
 	var c = Math.cos(angle);var s = Math.sin(angle);
 	var dotScale = CC3.dot(rotatee,rotater,new CC3());

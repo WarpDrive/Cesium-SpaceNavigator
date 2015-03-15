@@ -41,7 +41,9 @@ function getInput(controller)	//TODO: have keyboard input as an option for those
 	i=0;while(i<gp.axes.length)
 	{
 		mp[i]=gp.axes[i];
-		if(Math.abs(mp[i])<controllers[controller].deadZones[i]){mp[i]=0.0;} //deadzone TODO: once deadZone threshold is passed start output from zero
+		if(Math.abs(mp[i])<controllers[controller].deadZones[i]){mp[i]=0.0;}
+		//deadzone TODO: once deadZone threshold is passed start output from zero and rapidly scales to max
+		//so do a linear equation in x intercept form and point at (x=maxInput,y=1) like y = 2x - 2 or x = 2y - 2
 		mp[i]*=controllers[controller].scales[i]; //scale
 		mp[i]/=controllers[controller].maxInput; //convert to -1 to +1 (GamePAD API is supposed to do this already)
 		i+=1;
@@ -141,7 +143,8 @@ function moveSixDofCurved(speeds,rotmat,radius)
 	var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
 	var horzMag = CC3.magnitude(horzVec,new CC3());
 	var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
-	var ang=Math.atan(horzMag/radius); //TODO: rather than right angle trig use partial circumference
+	var circum=2*Math.PI*radius;
+	var ang=(horzMag/circum)*(2*Math.PI);
 	if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
 	else{camera.rotate(rotateVec,ang);}
 }
@@ -167,7 +170,8 @@ function move5DOF(speeds,rotmat,radius,camUp)
 		var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
 		var horzMag = CC3.magnitude(horzVec,new CC3());
 		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
-		var ang=Math.atan(horzMag/radius);//TODO: rather than right angle trig use partial circumference
+		var circum=2*Math.PI*radius;
+		var ang=(horzMag/circum)*(2*Math.PI);
 		
 		//moves
 		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
@@ -188,7 +192,8 @@ function move5DOF(speeds,rotmat,radius,camUp)
 		var horzVec = addVectors([rightC,dirC]);
 		var horzMag = CC3.magnitude(horzVec,new CC3());
 		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
-		var ang=Math.atan(horzMag/radius);//TODO: rather than right angle trig use partial circumference
+		var circum=2*Math.PI*radius;
+		var ang=(horzMag/circum)*(2*Math.PI);
 
 		//moves
 		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
@@ -236,7 +241,9 @@ function updateHeights()
 }
 function printStuff()
 {
-	//vectorToHP(transformee,transformer)	//TODO (sun and moon altitude/azimuth/range)
+	//transformee is vector from camera to asteroid 'in terms of' local ENU transform (which itself is in terms of Earth Fixed)
+	//need to get transformee from PI_Compass3D.js, so perhaps make transformee global var in PI_Common.js 
+	//vectorToHP(transformee,GD_rotmat)	//TODO (sun and moon altitude/azimuth/range)
 	
 	var camera=viewer.camera;var cp=camera.position;var CC3=Cesium.Cartesian3;
 	//get vector rotation components GeoCentric

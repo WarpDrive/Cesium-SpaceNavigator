@@ -43,7 +43,6 @@ function loadScript(url, callback)
     head.appendChild(script);
 	scriptCounter+=1;
 }
-
 //this is called by the app
 function initPlugins(pcesium)
 {
@@ -56,7 +55,6 @@ function initPlugins(pcesium)
 	//loadScript("http://maps.googleapis.com/maps/api/js?sensor=false", checkAllLoaded); //needed for geocoder,maps,streetview
 	//loadScript(baseURL+"PI_Streetview.js", checkAllLoaded);
 }
-
 //this is the callback
 var checkAllLoaded = function()
 {
@@ -71,8 +69,4 @@ var checkAllLoaded = function()
 		//runCompass(clock);
 	});
 };
-/*
-	Tricks (note this seems to only work if the script files are in the same directory as the html)
-	runCompass=function(){} in console will disable compass updating (model will remain in the last place put) do loadscript to re-define it
-*/
 					
