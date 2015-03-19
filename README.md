@@ -37,9 +37,11 @@ I get the same results using the HTML rocks tester on the various browsers
 http://www.html5rocks.com/en/tutorials/doodles/gamepad/gamepad-tester/tester.html
 
 Things to note
--In 5DOF mode horizontal input moves along a circle rather than an ellipsoid geodesic, while vertical adjust the radius of the circle. For now a circular path seems to work just fine. Perhaps later I'll have the path conform with the ellipsoid surface, at least as an option.
+-In 5DOF mode horizontal input moves along a circle rather than an ellipsoid geodesic, while vertical moves along the surface normal. For now a circular path seems to work just fine. Perhaps later I'll have the path conform to the ellipsoid surface, at least as an option Though I doubt anyone would really notice the difference.
+
 
 TODO list
 -keyboard support with ramping
 -negative tilt so you can pitch the view upside down
 -deadzone threshold output start at zero (this will improve FOV control)
+-Adaptive maxInput sensing: keep track of the highest value inputed and set that as maxInput. This shouldn't have to be done as GamePad API is 'supposed' to set controllers from -1 to +1, but this currently isn't the case for 3DMice.
