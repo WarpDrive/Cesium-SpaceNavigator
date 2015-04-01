@@ -41,7 +41,9 @@ Things to note
 
 TODO list
 -keyboard support with ramping
--negative tilt so you can pitch the view upside down
--deadzone threshold output start at zero (this will improve FOV control)
 -Adaptive maxInput sensing: keep track of the highest value inputed and set that as maxInput. This shouldn't have to be done as GamePad API is 'supposed' to set controllers from -1 to +1, but this currently isn't the case for 3DMice.
 -Adaptive height adjustment: each frame compare camera ellipsoid height difference between previous and current frame and adjust accordingly.
+
+DONE (not commited yet)
+-negative tilt so you can pitch the view upside down
+-deadzone threshold output start at zero (this will improve FOV control)
