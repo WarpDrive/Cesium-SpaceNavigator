@@ -1,56 +1,16 @@
 
 /* HyperSonic's Cesium 3DMouse plugin (dependencies: PI_manager.js, PI_common.js, PI_math.js)
-
-How to add controllers to the array:
-
-controllers.push
-({
-	device:1,showRaw:false,maxInput:46,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],scheme:"sixDofTrue",
-	cam_vel_prev:[0,0,0,0,0,0],scales:[1,-1,-1,-1,1,1]
-});
-
-controllers.push
-({
-	device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,2,0.01],scheme:"fiveDofCamUp",
-	cam_vel_prev:[0,0,0,0,0,0],scales:[1,-1,-1,-1,1,1]
-});
-
-Use controllers.pop() to remove a controller
-
-device is array index of the GamePad API
-showRaw:true displays raw input data in the console so you can figure out the maxInput of your device
-deadZones are used to disable small inputs from registering, they are in terms of maxInput rather than -1 to +1
 scheme is a movement type, there are currently 4 types: 'sixDofTrue', 'sixDofCurved', 'fiveDof', 'fiveDofCamUp'
-cam_vel_prev is used for motion smoothing, just make sure it's an array of 6 numbers
-scales can be used to scale and reverse the various axis
-
-If you don't know device or maxInput set showRaw to true to figure it out by watching the console output (ctrl-shift-i)
-Later I may provide automatic discovery by continuously scanning all of the gamepad api devices
+Hyper.SpaceNav.spaceCon.push('sixDofTrue','fiveDof');
 */
-
-//declare globals for this plugin
-var T_height=0;
-var lastSampleTime; //only used if using alternative get height method
+Hyper.SpaceNav = function(){};
+Hyper.SpaceNav.init = function(){};
+Hyper.SpaceNav.inertia5dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
+Hyper.SpaceNav.inertia6dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
+Hyper.SpaceNav.spaceCon=[];//parallel with Hyper.input.controllers
 
 //declare/define utility functions
-function getInput(controller)	//TODO: have keyboard input as an option for those without joysticks/3DMice/Gamepads
-{	
-	var mp = [0,0,0,0,0,0];var gp = navigator.getGamepads()[controllers[controller].device];
-	if(!gp){return mp;}
-	if(controllers[controller].showRaw==true){console.log(gp.axes);}
-	i=0;while(i<gp.axes.length)
-	{
-		mp[i]=gp.axes[i];
-		if(Math.abs(mp[i])<controllers[controller].deadZones[i]){mp[i]=0.0;}
-		//deadzone TODO: once deadZone threshold is passed start output from zero and rapidly scales to max
-		//so do a linear equation in x intercept form and point at (x=maxInput,y=1) like y = 2x - 2 or x = 2y - 2
-		mp[i]*=controllers[controller].scales[i]; //scale
-		mp[i]/=controllers[controller].maxInput; //convert to -1 to +1 (GamePAD API is supposed to do this already)
-		i+=1;
-	}
-	return mp;
-}
-function getWishSpeed(mp,moveScale)
+Hyper.SpaceNav.getWishSpeed = function(mp,moveScale)
 {
 	var camera = viewer.scene.camera;
 	var wishspeed =
@@ -64,46 +24,53 @@ function getWishSpeed(mp,moveScale)
 	];
 	return wishspeed;
 }
-function getResultSpeed(controller,wishspeed)
+Hyper.SpaceNav.getResultSpeed = function(controller,wishspeed)
 {
+	var con=Hyper.input.controllers;
 	var camera = viewer.scene.camera;var smoothfactor;
 	var ep=0.000001;
+	var veryclose,dif;
 	var resultSpeed=wishspeed.slice(); //clone
 	//DON'T init resultSpeed to all zeros, it will handle pauses badly!
 
 	//smooth (for now it assumes 16ms frametime)
 	i=0;while(i<6)
 	{			
-		var veryclose;var dif = wishspeed[i]-controllers[controller].cam_vel_prev[i];
+		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){dif = wishspeed[i]-Hyper.SpaceNav.inertia5dof[i];}
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}		
 		if(i<3){veryclose=ep;} //translations
 		else{veryclose=ep;} //looking
 		if(Math.abs(dif)>veryclose)
 		{
 			if(i<3){smoothfactor=0.08;} //translations
 			else{smoothfactor=0.08;} //looking
-			resultSpeed[i] = controllers[controller].cam_vel_prev[i] + dif * smoothfactor;
+			if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){resultSpeed[i] = Hyper.SpaceNav.inertia5dof[i] + dif * smoothfactor;}
+			if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){resultSpeed[i] = Hyper.SpaceNav.inertia6dof[i] + dif * smoothfactor;}
 		}
-		controllers[controller].cam_vel_prev[i] = resultSpeed[i];i+=1;
+		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];i+=1;}
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];i+=1;}
 	}
 	return resultSpeed;
 }
-function lookThreeDof(speeds)
+Hyper.SpaceNav.lookThreeDof = function(speeds)
 {
 	var camera = viewer.scene.camera;
 	camera.look(camera.right,speeds[0]);
 	camera.look(camera.direction,speeds[1]);
 	camera.look(camera.up,speeds[2]);
 }
-function lookTwoDof(speeds,GD_ENU_U)
+Hyper.SpaceNav.lookTwoDof = function(speeds,GD_ENU_U)
 {
 	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;
 	var pitchAxis = CC3.cross(camera.direction,GD_ENU_U,new CC3());
-	camera.look(pitchAxis, speeds[0]); //pitch
-	camera.look(GD_ENU_U, speeds[2]);	//yaw	
+	var reverse=1;if(Math.abs(Hyper.common.mycam.rol)>Math.PI/2){reverse=-1;}
+	camera.look(pitchAxis, speeds[0]*reverse); //pitch
+	camera.look(GD_ENU_U, speeds[2]*reverse);	//yaw	
 }
-function moveSixDofTrue(speeds)
+Hyper.SpaceNav.moveSixDofTrue = function(speeds)
 {	
 	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;
+	var hm3=Hyper.math3D;
 	//calcs
 	if(1)
 	{
@@ -113,33 +80,33 @@ function moveSixDofTrue(speeds)
 	}
 	else //ideally movement smoothing should be on the resultant not component vectors
 	{
-		var rightC = scaleVector(speeds[0],camera.right);
-		var dirC = scaleVector(speeds[1],camera.direction);
-		var upC = scaleVector(speeds[2],camera.up);
-		var moveVec = addVectors([rightC,dirC,upC]);
+		var rightC = hm3.scaleVector(speeds[0],camera.right);
+		var dirC = hm3.scaleVector(speeds[1],camera.direction);
+		var upC = hm3.scaleVector(speeds[2],camera.up);
+		var moveVec = hm3.addVectors([rightC,dirC,upC]);
 		var moveMag = CC3.magnitude(moveVec);
-		moveVec = vectorUnitize(moveVec);
+		moveVec = hm3.vectorUnitize(moveVec);
 		camera.move(moveVec,moveMag); //move
 	}
-	lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
+	Hyper.SpaceNav.lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
 }
-function moveSixDofCurved(speeds,rotmat,radius)
+Hyper.SpaceNav.moveSixDofCurved = function(speeds,rotmat,radius)
 {
-	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;
+	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;var hm3=Hyper.math3D;
 	var GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());
 	lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
 	
 	//calcs
-	var rightC = scaleVector(speeds[0],camera.right);
-	var dirC = scaleVector(speeds[1],camera.direction);
-	var upC = scaleVector(speeds[2],camera.up);
-	var moveVec = addVectors([rightC,dirC,upC]);
+	var rightC = hm3.scaleVector(speeds[0],camera.right);
+	var dirC = hm3.scaleVector(speeds[1],camera.direction);
+	var upC = hm3.scaleVector(speeds[2],camera.up);
+	var moveVec = hm3.addVectors([rightC,dirC,upC]);
 	var vertMag = CC3.dot(moveVec,GD_ENU_U,new CC3());
 
 	camera.move(GD_ENU_U,vertMag); //move vertical
 
 	//move horizontal along a great circle
-	var vertVec = scaleVector(vertMag,GD_ENU_U);
+	var vertVec = hm3.scaleVector(vertMag,GD_ENU_U);
 	var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
 	var horzMag = CC3.magnitude(horzVec,new CC3());
 	var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
@@ -148,12 +115,12 @@ function moveSixDofCurved(speeds,rotmat,radius)
 	if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
 	else{camera.rotate(rotateVec,ang);}
 }
-function move5DOF(speeds,rotmat,radius,camUp)
+Hyper.SpaceNav.move5DOF = function(speeds,rotmat,radius,camUp)
 {
-	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;
+	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;var hm3=Hyper.math3D;
 	var GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());
 	
-	lookTwoDof([speeds[3],speeds[4],speeds[5]],GD_ENU_U); //look & fov_zoom
+	Hyper.SpaceNav.lookTwoDof([speeds[3],speeds[4],speeds[5]],GD_ENU_U); //look & fov_zoom
 	
 	//var levelRight = CC3.cross(camera.direction,GD_ENU_U,new CC3());	//ignores roll
 	//var levelUp = CC3.cross(levelRight,camera.direction,new CC3());	//ignores roll
@@ -161,12 +128,12 @@ function move5DOF(speeds,rotmat,radius,camUp)
 	if(camUp)
 	{
 		//calcs
-		var rightC = scaleVector(speeds[0],camera.right);
-		var dirC = scaleVector(speeds[1],camera.direction);
-		var upC = scaleVector(speeds[2],camera.up);
-		var moveVec = addVectors([rightC,dirC,upC]);
+		var rightC = hm3.scaleVector(speeds[0],camera.right);
+		var dirC = hm3.scaleVector(speeds[1],camera.direction);
+		var upC = hm3.scaleVector(speeds[2],camera.up);
+		var moveVec = hm3.addVectors([rightC,dirC,upC]);
 		var vertMag = CC3.dot(moveVec,GD_ENU_U,new CC3());
-		var vertVec = scaleVector(vertMag,GD_ENU_U);
+		var vertVec = hm3.scaleVector(vertMag,GD_ENU_U);
 		var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
 		var horzMag = CC3.magnitude(horzVec,new CC3());
 		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
@@ -182,117 +149,60 @@ function move5DOF(speeds,rotmat,radius,camUp)
 	{
 		//remove camDir vertical component (don't need to with right vec if roll is 0)
 		//another way is just do cross(up,right)
-		var camDir=vectorToTransform(camera.direction,rotmat);
-		camDir.z=0;camDir=vectorUnitize(camDir);
-		camDir = vectorFromTransform(camDir,rotmat);
+		var camDir=hm3.vectorToTransform(camera.direction,rotmat);
+		camDir.z=0;camDir=hm3.vectorUnitize(camDir);
+		camDir = hm3.vectorFromTransform(camDir,rotmat);
 		
 		//calcs
-		var rightC = scaleVector(speeds[0],camera.right);
-		var dirC = scaleVector(speeds[1],camDir);
-		var horzVec = addVectors([rightC,dirC]);
+		var rightC = hm3.scaleVector(speeds[0],camera.right);
+		var dirC = hm3.scaleVector(speeds[1],camDir);
+		var horzVec = hm3.addVectors([rightC,dirC]);
 		var horzMag = CC3.magnitude(horzVec,new CC3());
 		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
 		var circum=2*Math.PI*radius;
 		var ang=(horzMag/circum)*(2*Math.PI);
 
 		//moves
-		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
+		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
 		else{camera.rotate(rotateVec,ang);}		
-		camera.move(GD_ENU_U,speeds[2]); //alter radius at the end (since speeds are based on original radius)
+		var reverse = 1;
+		if(Math.abs(Hyper.common.mycam.rol)>Math.PI/2){reverse=-1;}
+		camera.move(GD_ENU_U,speeds[2]*reverse); //alter radius at the end (since speeds are based on original radius)
 	}
 }
-function cameraHPR(comparedTO)
+Hyper.SpaceNav.cameraHPR = function(comparedTO)
 {
 	//comparedTo is usually the local ENU in terms of world coordinates
 	//cam_matrix are the camera vectors in terms of world coordinates
-	var camera = viewer.scene.camera;
-	var cam_matrix = vectorsToMatrix(camera.right,camera.direction,camera.up);
-	var Lcam_matrix = matrixToTransform(cam_matrix,comparedTO);	//cam_matrix 'in terms of' comparedTO
-	var temp = matrixToHPR(Lcam_matrix);
-	camera.hea=temp[0];camera.pit=temp[1];camera.rol=temp[2];
+	var camera = viewer.scene.camera;var hm3=Hyper.math3D;
+	var cam_matrix = hm3.vectorsToMatrix(camera.right,camera.direction,camera.up);
+	var Lcam_matrix = hm3.matrixToTransform(cam_matrix,comparedTO);	//cam_matrix 'in terms of' comparedTO
+	var temp = hm3.matrixToHPR(Lcam_matrix);
+	Hyper.common.mycam.hea=temp[0];Hyper.common.mycam.pit=temp[1];Hyper.common.mycam.rol=temp[2];
 }
-function updateHeights()
+Hyper.SpaceNav.getDist = function()
 {
-	var camera=viewer.camera;
-	if(1) //updates every frame, but uses currently rendered LOD
-	{
-		var test = new Cesium.Cartographic(camera._positionCartographic.longitude, camera._positionCartographic.latitude, 0);
-		test=viewer.scene.globe.getHeight(test);
-		if(isNaN(test)){return;} //DON'T set T_height to zero, simply retain its value
-		else{T_height=test;}
-	}
-	else //sampleTerrain high detail(15) LOD every 2 seconds
-	{
-		var dt = new Date();
-		var secs = dt.getSeconds() + (60 * dt.getMinutes()) + (60 * 60 * dt.getHours());
-		if(secs > lastSampleTime + 2)
-		{
-			lastSampleTime=secs;
-			var positions = [new Cesium.Cartographic(camera._positionCartographic.longitude, camera._positionCartographic.latitude, 0)];
-			var promise = Cesium.sampleTerrain(terrainProvider, 15, positions);	//15 max
-			Cesium.when(promise, function(updatedPositions) 
-			{
-				// positions[0].height has been updated.updatedPositions is just a reference to positions.
-				if(!isNaN(updatedPositions[0].height))
-				{T_height = updatedPositions[0].height;}
-			});
-		}
-	}
-}
-function printStuff()
-{
-	//transformee is vector from camera to asteroid 'in terms of' local ENU transform (which itself is in terms of Earth Fixed)
-	//need to get transformee from PI_Compass3D.js, so perhaps make transformee global var in PI_Common.js 
-	//vectorToHP(transformee,GD_rotmat)	//TODO (sun and moon altitude/azimuth/range)
-	
-	var camera=viewer.camera;var cp=camera.position;var CC3=Cesium.Cartesian3;
-	//get vector rotation components GeoCentric
-	var horizP = Math.sqrt(camera.position.x * camera.position.x + camera.position.y * camera.position.y);
-	var GCLAT = Math.atan2(camera.position.z,horizP);
-	var GCLON = Math.atan2(camera.position.y,camera.position.x);
-	var GC_ENU_E = Cesium.Cartesian3.normalize(Cesium.Cartesian3.cross({x:0,y:0,z:1},camera.position,new CC3()),new CC3());
-	var GC_ENU_U = Cesium.Cartesian3.normalize(camera.position,new Cesium.Cartesian3());
-	var GC_ENU_N = Cesium.Cartesian3.cross(GC_ENU_U,GC_ENU_E,new CC3());
-
-	var buf="";
-	buf+="FOV: "+Cesium.Math.toDegrees(camera.frustum.fov).toFixed(3);
-	buf+=" Earth x,y,z: "+cp.x.toFixed(3)+" , "+cp.y.toFixed(3)+" , "+cp.z.toFixed(3);
-	buf+=" height(camera): "+camera.positionCartographic.height.toFixed(3);
-	buf+=" height(terrain): "+T_height.toFixed(3);
-	buf+=" diff: "+(camera._positionCartographic.height-T_height).toFixed(3);
-	buf+=" GDHEA: "+Cesium.Math.toDegrees(camera.hea).toFixed(3);
-	buf+=" GDPIT: "+Cesium.Math.toDegrees(camera.pit).toFixed(3);
-	buf+=" GDROL: "+Cesium.Math.toDegrees(camera.rol).toFixed(3);
-	buf+=" radius: "+cp.radius.toFixed(3);
-	buf+=" GDLON: "+Cesium.Math.toDegrees(camera.positionCartographic.longitude).toFixed(3);
-	buf+=" GDLAT: "+Cesium.Math.toDegrees(camera.positionCartographic.latitude).toFixed(3);
-	buf+=" GCLAT: "+Cesium.Math.toDegrees(GCLAT).toFixed(3);
-	//buf+=" LDIF: "+Cesium.Math.toDegrees(camera._positionCartographic.latitude-GCLAT);
-	//buf+=" GCLON: "+Cesium.Math.toDegrees(GCLON).toFixed(3);	//no need since GDLON = GCLON		
-	document.getElementById("toolbar").innerHTML=buf;
-}
-function getDist(clock)
-{
-	var camera = viewer.camera;var cp = camera.position;
+	var camera = viewer.camera;var cp = camera.position;var hc=Hyper.common;
 	var dist,mdist,sdist;var nearWhat;
 			
 	//Earth
 	//camera._positionCartographic.height same as viewer.scene.globe.ellipsoid.cartesianToCartographic(cp).height
-	var edist = camera._positionCartographic.height-T_height;
+	var edist = camera._positionCartographic.height-hc.T_height;
 	dist=edist;nearWhat="Earth";
+	var temp;
 
 	//Moon
-	if(typeof moonPosition != 'undefined') //if(Cesium.defined(moonPosition))
+	if(typeof hc.moonPositionEF != 'undefined') //if(Cesium.defined(hc.moonPositionEF))
 	{
-		var temp = Math.pow(moonPosition.x-cp.x,2) + Math.pow(moonPosition.y-cp.y,2) + Math.pow(moonPosition.z-cp.z,2);
+		temp = Math.pow(hc.moonPositionEF.x-cp.x,2) + Math.pow(hc.moonPositionEF.y-cp.y,2) + Math.pow(hc.moonPositionEF.z-cp.z,2);
 		mdist = Math.sqrt(temp)-1737400; //cp distance from Moons's semi-minor axis
 		if(edist>mdist){dist=mdist;nearWhat="Moon";}
 	}	
 
 	//Sun
-	if(typeof sunPosition != 'undefined') //if(Cesium.defined(sunPosition))
+	if(typeof hc.sunPositionEF != 'undefined') //if(Cesium.defined(hc.sunPositionEF))
 	{
-		var temp = Math.pow(sunPosition.x-cp.x,2) + Math.pow(sunPosition.y-cp.y,2) + Math.pow(sunPosition.z-cp.z,2);
+		temp = Math.pow(hc.sunPositionEF.x-cp.x,2) + Math.pow(hc.sunPositionEF.y-cp.y,2) + Math.pow(hc.sunPositionEF.z-cp.z,2);
 		sdist = Math.sqrt(temp)-695800000; //cp distance from Sun's radius
 		if(edist>sdist){dist=sdist;nearWhat="Sun";}
 	}	
@@ -304,49 +214,66 @@ function getDist(clock)
 	
 	return dist;
 }
-function runSixDof(clock)
+Hyper.SpaceNav.main = function(clock)
 {
 	//Cesium abbreviations
-	var camera = viewer.camera;var cp = camera.position;
+	var camera = viewer.camera;var cp = camera.position;var hc=Hyper.common;
+	var con=Hyper.input.controllers;
 	
-	//Set camera HPR (adds .hea .pit .rol properties to the camera object)
-	cameraHPR(GD_rotmat);
+	//Set camera HPR
+	//TODO: better way to determine upsideDown using local right.z up.z ?
+	var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
+	Hyper.SpaceNav.cameraHPR(hc.GD_rotmat);
 						
 	//adjust camera
-	var input,wishSpeed,resultSpeed;
-	var dist = getDist(clock);
-	cp.radius = Math.sqrt(cp.x*cp.x + cp.y*cp.y + cp.z*cp.z); //camera radius from Earth's center
-	var i=0;while(i<controllers.length)
+	var myinput,wishSpeed,resultSpeed;
+	var dist = Hyper.SpaceNav.getDist();
+	var i=0;while(i<con.length)
 	{
-		input=getInput(i);
-		wishSpeed=getWishSpeed(input,dist);
-		resultSpeed=getResultSpeed(i,wishSpeed);
-		if(controllers[i].scheme=="sixDofTrue"){moveSixDofTrue(resultSpeed);}
-		if(controllers[i].scheme=="sixDofCurved"){moveSixDofCurved(resultSpeed,GD_rotmat,cp.radius);}
-		if(controllers[i].scheme=="fiveDofCamUp" || controllers[i].scheme=="fiveDof")
+		myinput=Hyper.input.getInput(i);
+		wishSpeed=Hyper.SpaceNav.getWishSpeed(myinput,dist);
+		resultSpeed=Hyper.SpaceNav.getResultSpeed(i,wishSpeed);
+		
+		/* Schemes to add
+			-Tranforms other than Earth fixed, such as:
+				-ICRF so you can move like a satellite does
+				-around a satellite which in turn is moving in ICRF (become an astronaut repairing the ISS!)
+		*/
+		if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.moveSixDofTrue(resultSpeed);}
+		if(Hyper.SpaceNav.spaceCon[i]=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
+		if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp" || Hyper.SpaceNav.spaceCon[i]=="fiveDof")
 		{
-			if((camera.rol!=0)&&((wishSpeed[3]!=0)||(wishSpeed[5]!=0))){camera.look(camera.direction,camera.rol);}//set roll 0
-			if(controllers[i].scheme=="fiveDofCamUp"){move5DOF(resultSpeed,GD_rotmat,cp.radius,true);}
-			if(controllers[i].scheme=="fiveDof"){move5DOF(resultSpeed,GD_rotmat,cp.radius,false);}
+			if((wishSpeed[3]!=0)||(wishSpeed[5]!=0))
+			{
+				if(Math.abs(hc.mycam.rol)<Math.PI/2) //positive tilt
+				{
+					if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
+					Hyper.SpaceNav.cameraHPR(hc.GD_rotmat); //refresh rol
+				}
+				else //negative tilt
+				{
+					if(Math.abs(hc.mycam.rol)!=180){camera.look(camera.direction,-(Math.PI-hc.mycam.rol));}	//set roll 180
+					Hyper.SpaceNav.cameraHPR(hc.GD_rotmat); //refresh rol
+				}
+			}
+			var nowUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){nowUpsideDown=1;}
+			if(nowUpsideDown!=prevUpsideDown)
+			{
+				var list=[2];//used to be more axis
+				var j=0;while(j<list.length)
+				{
+					if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.inertia5dof[list[j]]*=-1;}
+					if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[list[j]]*=-1;}
+					j+=1;
+				}
+			}
+			if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,true);}
+			if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,false);}
 			//adjust fov
 			camera.frustum.fov+= resultSpeed[4]/2; //FOV adjust since no roll
-			if(camera.frustum.fov<0.0001) {camera.frustum.fov=0.0001;}
+			if(camera.frustum.fov<0.0000000001) {camera.frustum.fov=0.0000000001;}
 			if(camera.frustum.fov>=(Math.PI-0.001)) {camera.frustum.fov=Math.PI-0.001;}
 		}
 		i+=1;
 	}
-
-	//print stuff
-	printStuff();
-					
-	//get T_height
-	updateHeights();
-}
-function initSixDof()
-{
-	//init globals
-	T_height = 0;	//terrain height relative to reference ellipsoid
-	//these two are only used if always sampling max LOD
-		lastSampleTime = 0; 
-		terrainProvider = new Cesium.CesiumTerrainProvider ({url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'});	
 }

@@ -28,14 +28,14 @@
 function startup(Cesium) {
     "use strict";
 //Sandcastle_Begin
-	//http://localhost:8080/Apps/Sandcastle/gallery/testapp.html
+	//http://localhost:8080/Apps/Sandcastle/gallery/fiveDof.html
 	viewer = new Cesium.Viewer('cesiumContainer');
-	initPlugins(Cesium);
-	controllers.push
-	({
-		device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,2,0.01],scheme:"fiveDof",
-		cam_vel_prev:[0,0,0,0,0,0],scales:[1,-1,-1,-1,1,1]
-	});
+	Hyper.scriptLoader.callBack = function()
+	{
+		Hyper.input.controllers.push({device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,3,0.01],scales:[1,-1,-1,-1,1,1]});
+		Hyper.SpaceNav.spaceCon.push('fiveDof');
+	}
+	Hyper.scriptLoader.initPlugins(Cesium);
 //Sandcastle_End
     Sandcastle.finishedLoading();
 }

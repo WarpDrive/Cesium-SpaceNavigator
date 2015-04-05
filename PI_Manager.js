@@ -5,7 +5,7 @@ Add this script to your html (change src to where-ever this is located)
 
 Place the following code into the script portion (note: don't put var in front of viewer as it's declared here as a global)
 viewer = new Cesium.Viewer('cesiumContainer');
-initPlugins(Cesium);
+Hyper.scriptLoader.initPlugins(Cesium);
 
 For sandcastle apps online put this in javascript code instead
     var head = document.getElementsByTagName('head')[0];
@@ -18,21 +18,23 @@ For sandcastle apps online put this in javascript code instead
 setTimeout(function()
 {
     viewer = new Cesium.Viewer('cesiumContainer');
-    initPlugins(Cesium);
+    Hyper.scriptLoader.initPlugins(Cesium);
 }, 3000);
 
 That's it! Just add/subtract plugins in initPlugins & checkAllLoaded
 */
 
-//global vars accesible by all plugins
-var Cesium,viewer,terrainProvider;							//cesium vars
-var scriptCounter=0;										//only used when initializing (could be deleted after)
-var GD_transform,GD_rotmat,moonPosition,SunPosition;		//shared plugin resources (so each plugin doesn't have to recalc each frame)
-var controllers=[];
-var baseURL="./";
-//baseURL="http://hyperscripts.atspace.tv/";
+//Make these global. Sandcastle apps try to make these local which is no good for Plug-ins
+var Cesium,viewer;			//Cesium vars
+var Hyper = function(){};	//Umbrella object for core modules
 
-function loadScript(url, callback)
+//scriptLoader object
+Hyper.scriptLoader = function(){};
+Hyper.scriptLoader.scriptCounter=0;			//only used when initializing
+Hyper.scriptLoader.baseURL="./";
+//scriptLoader.baseURL="http://hyperscripts.atspace.tv/";
+
+Hyper.scriptLoader.loadScript = function(url, callback)
 {
     var head = document.getElementsByTagName('head')[0];
     var script = document.createElement('script');
@@ -41,32 +43,43 @@ function loadScript(url, callback)
     script.onreadystatechange = callback; //IE?
     script.onload = callback;
     head.appendChild(script);
-	scriptCounter+=1;
+	Hyper.scriptLoader.scriptCounter+=1;
 }
 //this is called by the app
-function initPlugins(pcesium)
+Hyper.scriptLoader.initPlugins = function(pcesium)
 {
+	hs=Hyper.scriptLoader;
 	//this is where plugins can declare globals as well
 	Cesium=pcesium;	//global reference to passed parameter
-	loadScript(baseURL+"PI_Common.js", checkAllLoaded);
-	loadScript(baseURL+"PI_HyperMath.js", checkAllLoaded);
-	loadScript(baseURL+"PI_SpaceNavigator.js", checkAllLoaded);
-	//loadScript(baseURL+"PI_Compass.js", checkAllLoaded);
-	//loadScript("http://maps.googleapis.com/maps/api/js?sensor=false", checkAllLoaded); //needed for geocoder,maps,streetview
-	//loadScript(baseURL+"PI_Streetview.js", checkAllLoaded);
+	hs.loadScript(hs.baseURL+"PI_HyperMath.js", hs.checkAllLoaded);								//used by all plugins
+	hs.loadScript(hs.baseURL+"PI_Common.js", hs.checkAllLoaded);								//used by all plugins
+	hs.loadScript(hs.baseURL+"PI_Input.js", hs.checkAllLoaded);									//used by all plugins
+	hs.loadScript(hs.baseURL+"PI_SpaceNavigator.js", hs.checkAllLoaded);						//manual camera adjustment plugin
+	hs.loadScript(hs.baseURL+"PI_ReadOut.js", hs.checkAllLoaded);								//show stats
+	//hs.loadScript(hs.baseURL+"PI_Compass.js", hs.checkAllLoaded);								//show compass
+	//hs.loadScript("http://maps.googleapis.com/maps/api/js?sensor=false", hs.checkAllLoaded);	//needed for geocoder,maps,streetview
+	//hs.loadScript(hs.baseURL+"PI_Streetview.js", hs.checkAllLoaded);
+	
+	//potential problem: if a script loads very fast and calls it's callback before the next loadScript command then it could mess this up.
+	//Unlikely, but figure out a solution anyway.
 }
 //this is the callback
-var checkAllLoaded = function()
+Hyper.scriptLoader.checkAllLoaded = function()
 {
-	scriptCounter-=1;if(scriptCounter>0){return;} //don't init anything until all is loaded
-	initCommon();
-	initSixDof();
-	//initCompass();
+	Hyper.scriptLoader.scriptCounter-=1;if(Hyper.scriptLoader.scriptCounter>0){return;} //don't init anything until all is loaded
+	Hyper.common.init();
+	Hyper.SpaceNav.init();
+	//readOut.init();
+	//compass.init();
+	//StreetView.init();
+	Hyper.scriptLoader.callBack();//init extra stuff
 	viewer.clock.onTick.addEventListener(function(clock)
 	{
-		runCommon(clock);
-		runSixDof(clock);
-		//runCompass(clock);
+		Hyper.common.main(clock);//run this before the others
+		Hyper.SpaceNav.main(clock);
+		//readOut.main(clock);
+		//compass.main(clock);
+		//StreetView.main(clock);
 	});
 };
 					

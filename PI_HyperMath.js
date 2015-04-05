@@ -1,19 +1,24 @@
 
-/* HyperSonic's Math Libary (this is used to complement Cesium's math library)
+/* HyperSonic's Math Libary (to complement Cesium's math library)
 
-1x3 Vector
+I have a few functions here that do the same thing as Cesium math functions.
+Many Cesium functions require a result parameter and some don't, so I made my own versions, none of which use a result parameter. 
+Also I used naming conventions and parameter orders that are simply more intuitive for me.
+The data format is totally compatible with Cesium, so you can mix and match Cesium math with this math with no problems at all.
+
+1x3 Vector (a vector is a ray where origin is always (0,0,0), or non-applicable)
 .x
 .y
 .z
 
-3x3 Rotation matrix is column based (rotation matrix uses this format)
+3x3 Rotation matrix are assumed to be column based (rotation matrix uses this format)
 East(x)   North(y)  Up(z) 
 Right     Forward   Up
 [0]       [3]      [6]    x components
 [1]       [4]      [7]    y components
 [2]       [5]      [8]    z components
 
-4x4 TranRot matrix is column based (modelMatrix uses this format)
+4x4 TranRot matrix are assumed to be column based (modelMatrix uses this format)
 East(x)   North(y)  Up(z) Pos
 Right     Forward   Up
 [0]       [4]      [8]    [12] x components
@@ -21,8 +26,9 @@ Right     Forward   Up
 [2]       [6]      [10]   [14] z components
 [3]       [7]      [11]   [15] w components (only used for intermediate carry over) (set 1 for ENU vectors, 0 for pos vector)
 
-You only need 2 vectors to describe a rotation matrix, the 3rd is simply gotten with a cross product.
-Just make sure those vectors are orthogonal. w component is used as carry over, not final result.
+-You only need 2 vectors to describe a rotation matrix, the 3rd is simply gotten with a cross product. Just make sure those 2 vectors are orthogonal. 
+-An even more compact method is just the direction vector with roll of the right vector, then up is gotten with cross product.
+-Though nothing is more compact than 3 Euler angles, but it takes a alot computation to transfer between rotation matrix and Euler angles.
 
 3x3 COMPACT TranRot matrix column based PROPOSAL
 North(y)  Up(z)    Pos 
@@ -34,13 +40,46 @@ Forward   Up
 */
 
 //
+// 2D
+//
+Hyper.math2D = function(){};
+Hyper.math2D.dot = function(first,second){return first.x*second.x+first.y*second.y};
+
+//
+// 3D
+//
+
+Hyper.math3D = function(){};
+
+//
+// Basic functions
+//
+Hyper.math3D.dot = function(first,second){return first.x*second.x+first.y*second.y+first.z*second.z};
+Hyper.math3D.cross = function(first,second)
+{
+	var result = new Cesium.Cartesian3();
+	result.x = first.y * second.z - first.z * second.y;
+	result.y = first.z * second.x - first.x * second.z;
+	result.z = first.x * second.y - first.y * second.x;
+	return result;
+}
+Hyper.math3D.reverse = function(first)
+{
+	var result = new Cesium.Cartesian3();
+	result.x = -first.x;
+	result.y = -first.y;
+	result.z = -first.z;
+	return result;
+}
+
+//
 // Rotate functions
 //
 
-//rotateVector logic from https://code.google.com/p/earth-api-samples/source/browse/trunk/lib/math3d.js
+//credit: rotateVector logic from https://code.google.com/p/earth-api-samples/source/browse/trunk/lib/math3d.js
 //http://www.apache.org/licenses/LICENSE-2.0
 
-function rotateVector(rotatee,rotater,angle)
+Hyper.math3D.rotateVector = function(rotatee,rotater,angle)	//around its own origin
 {
 	//rotatee: unit vector, rotatee: unit vector, angle:radians
 	//CCW looking from vector tip to vector base
@@ -54,7 +93,7 @@ function rotateVector(rotatee,rotater,angle)
 	var comp2 = scaleVector(s,vPerpPerpAxis);
 	return addVectors([rotaterScaled,comp1,comp2]);
 }
-function rotateMatrix(rotatee,rotater,angle)
+Hyper.math3D.rotateMatrix = function(rotatee,rotater,angle)	//around its own origin
 {
 	//rotatee: Matrix 3x3, rotater: vector
 	var CM3=Cesium.Matrix3;var getCol=Cesium.Matrix3.getColumn;var CC3=Cesium.Cartesian3;
@@ -64,7 +103,7 @@ function rotateMatrix(rotatee,rotater,angle)
 	CM3.setColumn(rotated,2,rotateVector(getCol(rotatee,2,new CC3()),rotater,angle),rotated);
 	return rotated;
 }
-function HyperRotateAroundPoint() //TODO: change into code. rotate either vector or matrix around a point
+Hyper.math3D.rotateAroundPoint = function() //TODO: change into code. rotate either vector or matrix around a point
 {
 	/*
 	(psuedo code)
@@ -79,7 +118,7 @@ function HyperRotateAroundPoint() //TODO: change into code. rotate either vector
 //HPR <-> Rotation Matrix conversions
 //
 
-function matrixToHPR(theMatrix)
+Hyper.math3D.matrixToHPR = function(theMatrix)
 {
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;
 	var rig = CM3.getColumn(theMatrix,0,new CC3());
@@ -101,7 +140,7 @@ function matrixToHPR(theMatrix)
 	}
 	return [h,p,r];
 }
-function HPRtoMatrix(hea,pit,rol) //reverse of matrixToHPR (input radians)
+Hyper.math3D.HPRtoMatrix = function(hea,pit,rol) //reverse of matrixToHPR (input radians)
 {
 	var CC3 = Cesium.Cartesian3;
 	var til=pit+(Math.PI/2);rol*=-1;	//Cesium to GE conversions
@@ -112,16 +151,16 @@ function HPRtoMatrix(hea,pit,rol) //reverse of matrixToHPR (input radians)
 	var Ldir = new CC3(sh*st,ch*st,ct*-1);
 	var Lrig = new CC3(ch*cr+sh*ct*sr,sh*cr*-1+ch*ct*sr,st*sr);
 	var Lup = new CC3(sh*ct*cr+ch*sr*-1,ch*ct*cr+sh*sr,st*cr);
-	return vectorsToMatrix(Lrig,Ldir,Lup);
+	return Hyper.math3D.vectorsToMatrix(Lrig,Ldir,Lup);
 }
 
 //
 //HP <-> Vector conversions
 //
 
-function vectorToHP(transformee,transformer)	//untested function, I plan to use this for Moon and Sun Azmimuth calculation.
+Hyper.math3D.vectorToHP = function(transformee,transformer)	//I use this for Moon and Sun Azmimuth calculation.
 {
-	var Lvector = vectorToTransform(transformee,transformer);
+	var Lvector = Hyper.math3D.vectorToTransform(transformee,transformer);
 	var h,p;
 
 	if((Math.abs(Lvector.x)<0.0000001) && (Math.abs(Lvector.y)<0.0000001))
@@ -136,16 +175,17 @@ function vectorToHP(transformee,transformer)	//untested function, I plan to use 
 	}
 	return [h,p];
 }
-function HPtoVector(heading,pitch) //reverse of vectorToHP
+Hyper.math3D.HPtoVector = function(heading,pitch) //reverse of vectorToHP
 {
-	//TODO (just reverse the logic in vectorToHP
+	//TODO (just reverse the logic in vectorToHP)
 }
 
 //
 //TO and FROM transforms (vectors and matrices)
 //
 
-function vectorToTransform(transformee,transformer)	//This is column based. Matrix3.multiplyByVector is row based. Sure you could transpose, but why not just use this function.
+Hyper.math3D.vectorToTransform = function(transformee,transformer)
+//This is column based. Matrix3.multiplyByVector is row based. Sure you could transpose, but why not just use this function.
 {
 	//transformee & transformer are both 'in term of' the same thing, transformed is transformee 'in terms of' transformer
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var transformed = new CC3();
@@ -154,16 +194,16 @@ function vectorToTransform(transformee,transformer)	//This is column based. Matr
 	transformed.z=CC3.dot(transformee,CM3.getColumn(transformer,2,new CC3()));
 	return transformed;
 }
-function vectorFromTransform(transformee,transformer)	//This does the reverse of vectorToTransform.
+Hyper.math3D.vectorFromTransform = function(transformee,transformer)	//This does the reverse of vectorToTransform.
 {
 	//transformee is already 'in terms of' transformer, transformed is transformee 'in terms of' what transformer is 'in terms of'
-	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;
-	var C1=scaleVector(transformee.x,CM3.getColumn(transformer,0,new CC3()));
-	var C2=scaleVector(transformee.y,CM3.getColumn(transformer,1,new CC3()));
-	var C3=scaleVector(transformee.z,CM3.getColumn(transformer,2,new CC3()));
-	return addVectors([C1,C2,C3]); //transformed
+	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;hm3=Hyper.math3D;
+	var C1=hm3.scaleVector(transformee.x,CM3.getColumn(transformer,0,new CC3()));
+	var C2=hm3.scaleVector(transformee.y,CM3.getColumn(transformer,1,new CC3()));
+	var C3=hm3.scaleVector(transformee.z,CM3.getColumn(transformer,2,new CC3()));
+	return hm3.addVectors([C1,C2,C3]); //transformed
 }
-function matrixToTransform(transformee,transformer)	//Same as vectorToTransform, but for 3 vectors at a time.
+Hyper.math3D.matrixToTransform = function(transformee,transformer)	//Same as vectorToTransform, but for 3 vectors at a time.
 {
 	//transformee & transformer are both 'in term of' the same thing, transformed is transformee 'in terms of' transformer
 	var transformed = new Cesium.Matrix3();var CC3 = Cesium.Cartesian3;var i=0;var j=0;var k=0;
@@ -180,7 +220,7 @@ function matrixToTransform(transformee,transformer)	//Same as vectorToTransform,
 	}
 	return transformed;
 }
-function matrixFromTransform(transformee,transformer) //Does reverse of matrixToTransform.
+Hyper.math3D.matrixFromTransform = function(transformee,transformer) //Does reverse of matrixToTransform.
 {
 	//transformee is already 'in terms of' transformer, transformed is transformee 'in terms of' what transformer is 'in terms of'
 	//TODO, use vectorFromTransform as a guide
@@ -216,7 +256,7 @@ function matrixFromTransform(transformee,transformer) //Does reverse of matrixTo
 // Matrix group/ungroup
 //
 
-function vectorsToMatrix(first,second,third)	//Currently I use to make a camera rotation matrix.
+Hyper.math3D.vectorsToMatrix = function(first,second,third)	//Currently I use to make a camera rotation matrix.
 {
 	var CM3=Cesium.Matrix3;var temp = new CM3();
 	CM3.setColumn(temp,0,first,temp);
@@ -224,7 +264,7 @@ function vectorsToMatrix(first,second,third)	//Currently I use to make a camera 
 	CM3.setColumn(temp,2,third,temp);
 	return temp;
 }
-function matrixToVectors(inMatrix) //reverse of vectorsToMatrix (untested function)
+Hyper.math3D.matrixToVectors = function(inMatrix) //reverse of vectorsToMatrix (untested function)
 {
 	var CM3=Cesium.Matrix3;var CC3=Cesium.Cartesian3;
 	var first=new CC3();var second=new CC3();var third=new CC3();
@@ -238,16 +278,7 @@ function matrixToVectors(inMatrix) //reverse of vectorsToMatrix (untested functi
 // Odds and ends
 //
 
-function getAsteroidPosition(clock,asteroid) //Used to get Sun and Moon positions. Hopefully someday other planets as well such as Venus and Jupiter.
-{
-	var icrfToFixed = new Cesium.Matrix3();var asteroidPosition = new Cesium.Cartesian3();
-	if (!Cesium.defined(Cesium.Transforms.computeIcrfToFixedMatrix(clock.currentTime, icrfToFixed))) 
-		{Cesium.Transforms.computeTemeToPseudoFixedMatrix(clock.currentTime, icrfToFixed);console.log("used teme");}
-	if(asteroid=="Moon"){asteroidPosition = Cesium.Simon1994PlanetaryPositions.computeMoonPositionInEarthInertialFrame(clock.currentTime);}
-	if(asteroid=="Sun"){asteroidPosition = Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(clock.currentTime);}
-	return Cesium.Matrix3.multiplyByVector(icrfToFixed, asteroidPosition, asteroidPosition);
-}
-function addVectors(vectors) //Any number of vectors can be added on one swoop, unlike just 2 with Cartesian3.add()
+Hyper.math3D.addVectors = function(vectors) //Any number of vectors can be added in one swoop, unlike just 2 with Cartesian3.add()
 {
 	var resultant=new Cesium.Cartesian3(0,0,0);
 	var i=0;while(i<vectors.length)
@@ -259,29 +290,36 @@ function addVectors(vectors) //Any number of vectors can be added on one swoop, 
 	}
 	return resultant;
 }
-function scaleVector(scale,vector) //Same as Cartesian3.multiplyByScalar(), but the name is easier to remember and scalar is 1st parameter which is more intuitive for me.
+Hyper.math3D.scaleVector = function(scale,vector)
+//Same as Cartesian3.multiplyByScalar(), but the name is easier to remember and scalar is 1st parameter which is more intuitive for me.
 {
 	var temp = new Cesium.Cartesian3();
 	temp.x=scale*vector.x;temp.y=scale*vector.y;temp.z=scale*vector.z;
 	return temp;
 }
-function hasMagnitude(vector) //Zero length vectors cause problems, and why attempt calculating magnitude if all components are zero?
+Hyper.math3D.hasMagnitude = function(vector) //Zero length vectors cause problems, and why attempt calculating magnitude if all components are zero?
 {if((vector.x != 0) || (vector.y != 0) || (vector.z != 0)){return true;}return false;}
-function vectorUnitize(vector) //Why not reserve the word normal for orthogonal, and use Unitize for unitizing a vector.
+Hyper.math3D.vectorUnitize = function(vector) //Why not reserve the word normal for orthogonal, and use Unitize for unitizing a vector.
 {
 	var CC3=Cesium.Cartesian3;
-	if(hasMagnitude(vector)){return CC3.normalize(vector,new CC3());}
+	if(Hyper.math3D.hasMagnitude(vector)){return CC3.normalize(vector,new CC3());}
 	else {return new CC3(0,0,0);}
 }
-function isOrthogonal(vector1,vector2){if(Cesium.Cartesian3.dot(vector1,vector2)==0){return true;}return false;}; //TODO maybe add a close enough epsilon
-function isColinear(vector1,vector2) //Can't cross co-linear vectors, so here's a check.
+Hyper.math3D.distP2P_2D = function(pointA,pointB)
+{
+	var delta = {x:pointB.x-pointA.x,y:pointB.y-pointA.y};
+	return Math.sqrt(Math.pow(delta.x,2) + Math.pow(delta.y,2));
+}
+Hyper.math3D.isOrthogonal = function(vector1,vector2)
+{if(Cesium.Cartesian3.dot(vector1,vector2)==0){return true;}return false;}; //TODO maybe add a close enough epsilon
+Hyper.math3D.isColinear = function(vector1,vector2) //Can't cross co-linear vectors, so here's a check.
 {
 	if((vector1.x==vector2.x)&&(vector1.y==vector2.y)&&(vector1.z==vector2.z)){return true;}
 	Cesium.Cartesian3.negate(vector2,vector2);
 	if((vector1.x==vector2.x)&&(vector1.y==vector2.y)&&(vector1.z==vector2.z)){return true;}
 	return false;
 }
-function HyperSetView(hea,pit,rol) //TODO: change into code. Can be used for anything, not just camera
+Hyper.math3D.setView = function(hea,pit,rol) //TODO: change into code. Can be used for anything, not just camera
 {
 	//Camera.prototype.setView 
 		//does matrixToTransform to ENU
