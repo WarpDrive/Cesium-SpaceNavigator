@@ -1,16 +1,16 @@
 /*
-	How to add controllers to the array:
-	Hyper.input controllers.push({device:1,showRaw:false,maxInput:46,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],scales:[1,-1,-1,-1,1,1]});
-	Hyper.input controllers.push({device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,2,0.01],scales:[1,-1,-1,-1,1,1]});
-	Use controllers.pop() to remove a controller
+How to add controllers to the array:
+Hyper.input controllers.push({device:1,showRaw:false,maxInput:46,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],scales:[1,-1,-1,-1,1,1]});
+Hyper.input controllers.push({device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,2,0.01],scales:[1,-1,-1,-1,1,1]});
+Use controllers.pop() to remove a controller
 
-	device is array index of the GamePad API
-	showRaw:true displays raw input data in the console so you can figure out the maxInput of your device
-	deadZones are used to disable small inputs from registering, they are in terms of maxInput rather than -1 to +1
-	scales can be used to scale and reverse the various axis
+device is array index of the GamePad API
+showRaw:true displays raw input data in the console so you can figure out the maxInput of your device
+deadZones are used to disable small inputs from registering, they are in terms of maxInput rather than -1 to +1
+scales can be used to scale and reverse the various axis
 
-	If you don't know device or maxInput set showRaw to true to figure it out by watching the console output (ctrl-shift-i)
-	Later I may provide automatic discovery by continuously scanning all of the gamepad api devices
+If you don't know device or maxInput set showRaw to true to figure it out by watching the console output (ctrl-shift-i)
+Later I may provide automatic discovery by continuously scanning all of the gamepad api devices
 */
 Hyper.input = function(){};
 document['onkeyup'] = Hyper.input.keyUp;	//TODO setting document event listeners might interfere with Cesium, find out how to just add eventListener , not replace

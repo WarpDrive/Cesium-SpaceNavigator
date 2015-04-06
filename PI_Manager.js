@@ -55,7 +55,7 @@ Hyper.scriptLoader.initPlugins = function(pcesium)
 	hs.loadScript(hs.baseURL+"PI_Common.js", hs.checkAllLoaded);								//used by all plugins
 	hs.loadScript(hs.baseURL+"PI_Input.js", hs.checkAllLoaded);									//used by all plugins
 	hs.loadScript(hs.baseURL+"PI_SpaceNavigator.js", hs.checkAllLoaded);						//manual camera adjustment plugin
-	hs.loadScript(hs.baseURL+"PI_ReadOut.js", hs.checkAllLoaded);								//show stats
+	//hs.loadScript(hs.baseURL+"PI_ReadOut.js", hs.checkAllLoaded);								//show stats
 	//hs.loadScript(hs.baseURL+"PI_Compass.js", hs.checkAllLoaded);								//show compass
 	//hs.loadScript("http://maps.googleapis.com/maps/api/js?sensor=false", hs.checkAllLoaded);	//needed for geocoder,maps,streetview
 	//hs.loadScript(hs.baseURL+"PI_Streetview.js", hs.checkAllLoaded);
