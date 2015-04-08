@@ -2,7 +2,7 @@ Navigate through Space at warp speed, orbit planets, fly over terrain, or take a
 
 Place in /Build folder of your Cesium install.
 
-I've created a 5DOF testapp here http://warpdrive.github.io/Apps/fiveDof.html It can take about 20-30 sec to load which might be due to the web-host (I plan to swap soon) or perhaps because it's using the unminified version. To activate just press one of the 3Dmouse buttons. Some important caveats, if you do any of these in Chromium in Windows (Chrome and Opera)
+I've created a 5DOF testapp here http://warpdrive.github.io/Apps/fiveDof.html To activate just press one of the 3Dmouse buttons. Some important caveats, if you do any of these in Chromium in Windows (Chrome and Opera)
 -reload the webpage
 -minimize the browser 
 -switch tabs 
