@@ -71,3 +71,24 @@ Hyper.input.mouseMove = function(e)	//for outside of the map3d window
 	console.log("x ",Hyper.input.deltaPageX);
 	console.log("y ",Hyper.input.deltaPageY);
 }
+/*
+var viewer = new Cesium.Viewer('cesiumContainer');
+
+viewer.terrainProvider = new Cesium.CesiumTerrainProvider({
+    url : '//assets.agi.com/terrain/v1/tilesets/world/tiles',
+    requestVertexNormals : true
+});
+scene.screenSpaceCameraController.enableRotate = false;
+scene.screenSpaceCameraController.enableTranslate = false;
+scene.screenSpaceCameraController.enableZoom = false;
+scene.screenSpaceCameraController.enableTilt = false;
+scene.screenSpaceCameraController.enableLook = false;
+var viewer = new Cesium.Viewer('cesiumContainer');
+var scene = viewer.scene;
+var canvas = viewer.canvas;
+canvas.setAttribute('tabindex', '0'); // needed to put focus on the canvas
+canvas.onclick = function() {
+    canvas.focus();
+};
+var ellipsoid = scene.globe.ellipsoid;
+*/

@@ -18,6 +18,8 @@ Hyper.common.terrainProvider;	//only used if using alternative get height method
 
 Hyper.common.init = function()
 {
+	viewer.scene.globe.enableLighting = true; //just a personal preference
+
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
 	//camera.frustum.far = 1e12;
 	hc.icrfToFixed = new CM3();		//shares origin with Earth Fixed	
@@ -51,7 +53,7 @@ Hyper.common.updateFrames = function(clock)
 	hc.GD_rotmat = Cesium.Matrix4.getRotation(hc.GD_transform,new Cesium.Matrix3());//rot
 	
 	//can use this is all you want to know is up
-	//Ellipsoid.WGS84.geodeticSurfaceNormal(position, normalScratch)
+	//Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(position, normalScratch)
 	
 	//Earth GeoCentric reference frame at camera
 	var horizP = Math.sqrt(cp.x * cp.x + cp.y * cp.y);
