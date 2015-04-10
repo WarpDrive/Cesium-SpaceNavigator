@@ -22,7 +22,7 @@ Hyper.input.prevPageX=0;Hyper.input.deltaPageX=0;
 Hyper.input.prevPageY=0;Hyper.input.deltaPageY=0;
 Hyper.input.getInput = function(controller)	//TODO: have keyboard input as an option for those without joysticks/3DMice/Gamepads
 {	
-	var con=Hyper.input.controllers; //TODO: this module should be independent of SpaceNav
+	var con=Hyper.input.controllers;
 	var mp = [0,0,0,0,0,0];var gp = navigator.getGamepads()[con[controller].device];
 	if(!gp){return mp;}
 	if(con[controller].showRaw==true){console.log(gp.axes);}
@@ -78,6 +78,7 @@ viewer.terrainProvider = new Cesium.CesiumTerrainProvider({
     url : '//assets.agi.com/terrain/v1/tilesets/world/tiles',
     requestVertexNormals : true
 });
+//document.activeElement
 scene.screenSpaceCameraController.enableRotate = false;
 scene.screenSpaceCameraController.enableTranslate = false;
 scene.screenSpaceCameraController.enableZoom = false;

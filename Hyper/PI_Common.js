@@ -15,6 +15,7 @@ Hyper.common.mycam;				//Camera properties
 Hyper.common.T_height;			//terrain height
 Hyper.common.lastSampleTime;	//only used if using alternative get height method
 Hyper.common.terrainProvider;	//only used if using alternative get height method
+Hyper.common.prevFrame;			//time of previous frame
 
 Hyper.common.init = function()
 {
@@ -23,15 +24,15 @@ Hyper.common.init = function()
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
 	//camera.frustum.far = 1e12;
 	hc.icrfToFixed = new CM3();		//shares origin with Earth Fixed	
-	hc.moonPosition=new CC3();		//in terms of ICRF, (type Cartesian3)
-	hc.sunPosition=new CC3();		//in terms of ICRF, (type Cartesian3)
-	hc.moonPositionEF=new CC3();	//in terms of Earth Fixed, (type Cartesian3)
-	hc.sunPositionEF=new CC3();		//in terms of Earth Fixed, (type Cartesian3)
-	hc.GD_transform = new Cesium.Matrix4();
-	hc.GD_rotmat = new CM3();
-	hc.GC_rotmat = new CM3();
+	hc.moonPosition=new CC3();		//in terms of ICRF
+	hc.sunPosition=new CC3();		//in terms of ICRF
+	hc.moonPositionEF=new CC3();	//in terms of Earth Fixed
+	hc.sunPositionEF=new CC3();		//in terms of Earth Fixed
+	hc.GD_transform = new Cesium.Matrix4();//in terms of Earth Fixed
+	hc.GD_rotmat = new CM3();		//in terms of Earth Fixed
+	hc.GC_rotmat = new CM3();		//in terms of Earth Fixed
 	hc.GC_carto = {lon:0,lat:0,rad:0};//geocentric cartographic
-	hc.mycam = {hea:0,pit:0,rol:0,til:0};
+	hc.mycam = {hea:0,pit:0,rol:0,til:0};//in terms of local EastNorthUp
 	
 	hc.T_height=0;	//terrain height relative to reference ellipsoid
 	hc.lastSampleTime = 0; 
@@ -40,6 +41,7 @@ Hyper.common.init = function()
 Hyper.common.main = function(clock)
 {
 	var hc=Hyper.common;
+	hc.prevFrame=new Date().getTime();
 	hc.updateFrames(clock);
 	hc.updateCelestial(clock);//update icrfToFixed first
 	hc.updateHeights();

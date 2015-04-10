@@ -14,6 +14,10 @@ There's also this page which simply changes a few of the controller's properties
 
 With the 2 fiveDOF options roll action on the 3DMouse controls camera FOV. Also you can have any number of 3DMice working at the same time, I usually have the left 3DMouse for 6DOF and the right 3DMouse for 5DOF with FOV control. When you reboot the computer often times the 3DMice change order in the GamePad array, but all you have to do is swap device numbers in the controllers array to rectify.
 
+The other control options
+http://warpdrive.github.io/Apps/fiveDofCamUp.html
+http://warpdrive.github.io/Apps/sixDofCurved.html
+
 Browser support
 
 Currently only Chromium engine browsers (Chrome and Opera) recoginze 3DMice.
