@@ -32,23 +32,34 @@ Hyper.SpaceNav.getResultSpeed = function(controller,wishspeed)
 	var veryclose,dif;
 	var resultSpeed=wishspeed.slice(); //clone
 	//DON'T init resultSpeed to all zeros, it will handle pauses badly!
-
-	//smooth (for now it assumes 16ms frametime)
+	
+	//smooth
 	i=0;while(i<6)
 	{			
+		//get dif
 		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){dif = wishspeed[i]-Hyper.SpaceNav.inertia5dof[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}		
+		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){dif = wishspeed[i]-Hyper.SpaceNav.inertia5dof[i];}
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}	
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}		
 		if(i<3){veryclose=ep;} //translations
 		else{veryclose=ep;} //looking
-		if(Math.abs(dif)>veryclose)
+		if(Math.abs(dif)>veryclose) //only smooth if there's a significant difference
 		{
 			if(i<3){smoothfactor=0.08;} //translations
 			else{smoothfactor=0.08;} //looking
+			
+			//apply smoothing (tweaked for 16ms frametime, should factor in the real frametime)
 			if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){resultSpeed[i] = Hyper.SpaceNav.inertia5dof[i] + dif * smoothfactor;}
+			if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){resultSpeed[i] = Hyper.SpaceNav.inertia5dof[i] + dif * smoothfactor;}
 			if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){resultSpeed[i] = Hyper.SpaceNav.inertia6dof[i] + dif * smoothfactor;}
+			if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){resultSpeed[i] = Hyper.SpaceNav.inertia6dof[i] + dif * smoothfactor;}
 		}
-		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];i+=1;}
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];i+=1;}
+		//save inertia for next frame
+		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];}
+		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];}
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];}
+		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];}
+		i+=1;
 	}
 	return resultSpeed;
 }
@@ -94,7 +105,7 @@ Hyper.SpaceNav.moveSixDofCurved = function(speeds,rotmat,radius)
 {
 	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;var hm3=Hyper.math3D;
 	var GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());
-	lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
+	Hyper.SpaceNav.lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
 	
 	//calcs
 	var rightC = hm3.scaleVector(speeds[0],camera.right);
@@ -112,7 +123,7 @@ Hyper.SpaceNav.moveSixDofCurved = function(speeds,rotmat,radius)
 	var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
 	var circum=2*Math.PI*radius;
 	var ang=(horzMag/circum)*(2*Math.PI);
-	if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
+	if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
 	else{camera.rotate(rotateVec,ang);}
 }
 Hyper.SpaceNav.move5DOF = function(speeds,rotmat,radius,camUp)
@@ -141,7 +152,7 @@ Hyper.SpaceNav.move5DOF = function(speeds,rotmat,radius,camUp)
 		var ang=(horzMag/circum)*(2*Math.PI);
 		
 		//moves
-		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hasMagnitude(rotateVec)){}
+		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
 		else{camera.rotate(rotateVec,ang);}
 		camera.move(GD_ENU_U,vertMag); //alter radius at the end (since speeds are based on original radius)
 	}
@@ -221,19 +232,20 @@ Hyper.SpaceNav.main = function(clock)
 	var con=Hyper.input.controllers;
 	
 	//Set camera HPR
-	//TODO: better way to determine upsideDown using local right.z up.z ?
+	//TODO: better way to determine upsideDown using local right.z up.z ? But you'll need to record the local vectors in the common module.
 	var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
 	Hyper.SpaceNav.cameraHPR(hc.GD_rotmat);
 						
 	//adjust camera
 	var myinput,wishSpeed,resultSpeed;
 	var dist = Hyper.SpaceNav.getDist();
+		
 	var i=0;while(i<con.length)
 	{
 		myinput=Hyper.input.getInput(i);
-		wishSpeed=Hyper.SpaceNav.getWishSpeed(myinput,dist);
+		wishSpeed=Hyper.SpaceNav.getWishSpeed(myinput,dist);		
 		resultSpeed=Hyper.SpaceNav.getResultSpeed(i,wishSpeed);
-		
+				
 		/* Schemes to add
 			-Tranforms other than Earth fixed, such as:
 				-ICRF so you can move like a satellite does
