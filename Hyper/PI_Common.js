@@ -32,7 +32,7 @@ Hyper.common.init = function()
 	hc.GD_rotmat = new CM3();		//in terms of Earth Fixed
 	hc.GC_rotmat = new CM3();		//in terms of Earth Fixed
 	hc.GC_carto = {lon:0,lat:0,rad:0};//geocentric cartographic
-	hc.mycam = {hea:0,pit:0,rol:0,til:0};//in terms of local EastNorthUp
+	hc.mycam = {hea:0,pit:0,rol:0,til:0,Lfor:{x:0,y:0,z:0},Lrig:{x:0,y:0,z:0},Lup:{x:0,y:0,z:0}};//in terms of local EastNorthUp
 	
 	hc.T_height=0;	//terrain height relative to reference ellipsoid
 	hc.lastSampleTime = 0; 
@@ -82,6 +82,22 @@ Hyper.common.updateCelestial = function(clock)
 	hc.sunPosition = Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(clock.currentTime);
 	hc.sunPositionEF = Hyper.math3D.vectorToTransform(hc.sunPosition,hc.icrfToFixed);
 	//perhaps these can be accessed via scene.sun and scene.moon?
+}
+Hyper.common.cameraHPR = function(comparedTO)
+{
+	//comparedTo is usually the local ENU in terms of world coordinates
+	//cam_matrix are the camera vectors in terms of world coordinates
+	
+	if((viewer.scene.mode==1)||(viewer.scene.mode==2)) //Columbus & 2D
+	{comparedTO=[1,0,0,0,1,0,0,0,1];}
+	
+	var camera = viewer.scene.camera;var hm3=Hyper.math3D;
+	var cam_matrix = hm3.vectorsToMatrix(camera.right,camera.direction,camera.up);
+	var Lcam_matrix = hm3.matrixToTransform(cam_matrix,comparedTO);	//cam_matrix 'in terms of' comparedTO
+	var temp = hm3.matrixToHPR(Lcam_matrix);
+	Hyper.common.mycam.hea=temp[0];Hyper.common.mycam.pit=temp[1];Hyper.common.mycam.rol=temp[2];
+	//TODO: also save local vec
+	//Hyper.common.mycam.Lfor,Hyper.common.mycam.Lrig,Hyper.common.mycam.Lup
 }
 Hyper.common.updateHeights = function() //updates Hyper.common.T_height
 {

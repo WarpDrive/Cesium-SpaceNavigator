@@ -18,6 +18,9 @@ The other control options
 http://warpdrive.github.io/Apps/fiveDofCamUp.html
 http://warpdrive.github.io/Apps/sixDofCurved.html
 
+An example of dual controllers
+http://warpdrive.github.io/Apps/dualControllers.html
+
 Browser support
 
 Currently only Chromium engine browsers (Chrome and Opera) recoginze 3DMice.

@@ -129,67 +129,91 @@ Hyper.SpaceNav.moveSixDofCurved = function(speeds,rotmat,radius)
 Hyper.SpaceNav.move5DOF = function(speeds,rotmat,radius,camUp)
 {
 	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;var hm3=Hyper.math3D;
-	var GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());
+	var GD_ENU_U = new CC3();
 	
+	if((viewer.scene.mode==1)||(viewer.scene.mode==2)){GD_ENU_U = new CC3(0,0,1);} //Columbus and 2D
+	else{GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());}
+		
 	Hyper.SpaceNav.lookTwoDof([speeds[3],speeds[4],speeds[5]],GD_ENU_U); //look & fov_zoom
+	var reverse = 1;
+	if(Math.abs(Hyper.common.mycam.rol)>Math.PI/2){reverse=-1;}
 	
 	//var levelRight = CC3.cross(camera.direction,GD_ENU_U,new CC3());	//ignores roll
 	//var levelUp = CC3.cross(levelRight,camera.direction,new CC3());	//ignores roll
 	
 	if(camUp)
 	{
-		//calcs
+		//calcs (for all scene modes)
 		var rightC = hm3.scaleVector(speeds[0],camera.right);
 		var dirC = hm3.scaleVector(speeds[1],camera.direction);
 		var upC = hm3.scaleVector(speeds[2],camera.up);
 		var moveVec = hm3.addVectors([rightC,dirC,upC]);
-		var vertMag = CC3.dot(moveVec,GD_ENU_U,new CC3());
-		var vertVec = hm3.scaleVector(vertMag,GD_ENU_U);
-		var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
-		var horzMag = CC3.magnitude(horzVec,new CC3());
-		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
-		var circum=2*Math.PI*radius;
-		var ang=(horzMag/circum)*(2*Math.PI);
-		
-		//moves
-		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
-		else{camera.rotate(rotateVec,ang);}
-		camera.move(GD_ENU_U,vertMag); //alter radius at the end (since speeds are based on original radius)
+		var moveMag = CC3.magnitude(moveVec,new CC3());
+
+		if((viewer.scene.mode==1)||(viewer.scene.mode==2))//Columbus & 2D
+		{
+			//move
+			camera.move(hm3.vectorUnitize(moveVec),moveMag);
+		}
+		else//3D
+		{
+			//calcs for 3D
+			var vertMag = CC3.dot(moveVec,GD_ENU_U,new CC3());
+			var vertVec = hm3.scaleVector(vertMag,GD_ENU_U);
+			var horzVec = CC3.subtract(moveVec,vertVec,new CC3());
+			var horzMag = CC3.magnitude(horzVec,new CC3());
+			var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
+			var circum=2*Math.PI*radius;
+			var ang=(horzMag/circum)*(2*Math.PI);
+			
+			//move
+			if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
+			else{camera.rotate(rotateVec,ang);} //great circle
+			camera.move(GD_ENU_U,vertMag); //alter radius at the end (since speeds are based on original radius)
+		}
 	}
 	else//world up
 	{
 		//remove camDir vertical component (don't need to with right vec if roll is 0)
 		//another way is just do cross(up,right)
-		var camDir=hm3.vectorToTransform(camera.direction,rotmat);
-		camDir.z=0;camDir=hm3.vectorUnitize(camDir);
-		camDir = hm3.vectorFromTransform(camDir,rotmat);
 		
-		//calcs
+		//calc camDir
+		var camDir=new CC3();
+		if((viewer.scene.mode==1)||(viewer.scene.mode==2)) //Columbus & 2D
+		{
+			camDir=camera.direction.clone();camDir.z=0;
+			//TODO incase there is roll, maybe do camRig and set camRig.z=0
+		}
+		else//3D
+		{
+			//TODO: have common module store camera ENU matrix so you don't have to recalculate
+			camDir=hm3.vectorToTransform(camera.direction,rotmat);
+			camDir.z=0;camDir=hm3.vectorUnitize(camDir);
+			camDir = hm3.vectorFromTransform(camDir,rotmat);
+		}
+		//calcs horizontal (for all scene modes)
 		var rightC = hm3.scaleVector(speeds[0],camera.right);
 		var dirC = hm3.scaleVector(speeds[1],camDir);
 		var horzVec = hm3.addVectors([rightC,dirC]);
 		var horzMag = CC3.magnitude(horzVec,new CC3());
-		var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
-		var circum=2*Math.PI*radius;
-		var ang=(horzMag/circum)*(2*Math.PI);
 
-		//moves
-		if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
-		else{camera.rotate(rotateVec,ang);}		
-		var reverse = 1;
-		if(Math.abs(Hyper.common.mycam.rol)>Math.PI/2){reverse=-1;}
-		camera.move(GD_ENU_U,speeds[2]*reverse); //alter radius at the end (since speeds are based on original radius)
+		if((viewer.scene.mode==1)||(viewer.scene.mode==2)) //Columbus & 2D
+		{
+			camera.move(hm3.vectorUnitize(horzVec),horzMag);
+			camera.move(GD_ENU_U,speeds[2]*reverse);
+		}
+		else //3D
+		{
+			var rotateVec = CC3.cross(horzVec,GD_ENU_U,new CC3());
+			var circum=2*Math.PI*radius;
+			var ang=(horzMag/circum)*(2*Math.PI);
+
+			//moves
+			if(isNaN(ang) || isNaN(rotateVec.x) || isNaN(rotateVec.y) || isNaN(rotateVec.z) || !hm3.hasMagnitude(rotateVec)){}
+			else{camera.rotate(rotateVec,ang);}		
+			camera.move(GD_ENU_U,speeds[2]*reverse); //alter radius at the end (since speeds are based on original radius)
+		}
 	}
-}
-Hyper.SpaceNav.cameraHPR = function(comparedTO)
-{
-	//comparedTo is usually the local ENU in terms of world coordinates
-	//cam_matrix are the camera vectors in terms of world coordinates
-	var camera = viewer.scene.camera;var hm3=Hyper.math3D;
-	var cam_matrix = hm3.vectorsToMatrix(camera.right,camera.direction,camera.up);
-	var Lcam_matrix = hm3.matrixToTransform(cam_matrix,comparedTO);	//cam_matrix 'in terms of' comparedTO
-	var temp = hm3.matrixToHPR(Lcam_matrix);
-	Hyper.common.mycam.hea=temp[0];Hyper.common.mycam.pit=temp[1];Hyper.common.mycam.rol=temp[2];
 }
 Hyper.SpaceNav.getDist = function()
 {
@@ -202,7 +226,7 @@ Hyper.SpaceNav.getDist = function()
 	dist=edist;nearWhat="Earth";
 	var temp;
 
-	//Moon
+	//Moon (only shows Moon in 3D mode)
 	if(typeof hc.moonPositionEF != 'undefined') //if(Cesium.defined(hc.moonPositionEF))
 	{
 		temp = Math.pow(hc.moonPositionEF.x-cp.x,2) + Math.pow(hc.moonPositionEF.y-cp.y,2) + Math.pow(hc.moonPositionEF.z-cp.z,2);
@@ -219,7 +243,7 @@ Hyper.SpaceNav.getDist = function()
 	}	
 
 	//dist misc
-	if((camera._mode == 1)||(camera._mode == 2)){dist=camera.position.z;}	//doesn't appear to show moon on these modes
+	if((camera._mode == 1)||(camera._mode == 2)){dist=camera.position.z;} //TODO: what about terrain in Columbus mode?
 	dist=Math.abs(dist);	//don't care which side of the surface
 	if(dist<16){dist=16;}	//treat 0 to 16 meters the same so you don't slow to a crawl
 	
@@ -234,7 +258,7 @@ Hyper.SpaceNav.main = function(clock)
 	//Set camera HPR
 	//TODO: better way to determine upsideDown using local right.z up.z ? But you'll need to record the local vectors in the common module.
 	var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
-	Hyper.SpaceNav.cameraHPR(hc.GD_rotmat);
+	Hyper.common.cameraHPR(hc.GD_rotmat);
 						
 	//adjust camera
 	var myinput,wishSpeed,resultSpeed;
@@ -260,12 +284,12 @@ Hyper.SpaceNav.main = function(clock)
 				if(Math.abs(hc.mycam.rol)<Math.PI/2) //positive tilt
 				{
 					if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
-					Hyper.SpaceNav.cameraHPR(hc.GD_rotmat); //refresh rol
+					Hyper.common.cameraHPR(hc.GD_rotmat); //refresh rol
 				}
 				else //negative tilt
 				{
 					if(Math.abs(hc.mycam.rol)!=180){camera.look(camera.direction,-(Math.PI-hc.mycam.rol));}	//set roll 180
-					Hyper.SpaceNav.cameraHPR(hc.GD_rotmat); //refresh rol
+					Hyper.common.cameraHPR(hc.GD_rotmat); //refresh rol
 				}
 			}
 			var nowUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){nowUpsideDown=1;}

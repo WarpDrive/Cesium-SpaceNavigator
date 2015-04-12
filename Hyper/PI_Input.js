@@ -29,6 +29,9 @@ Hyper.input.getInput = function(controller)	//TODO: have keyboard input as an op
 	i=0;while(i<gp.axes.length)
 	{
 		mp[i]=gp.axes[i];
+		if(Math.abs(mp[i])>con[controller].maxInput){con[controller].maxInput=Math.abs(mp[i]);} //determine true maxInput (ya GamePad API supposed to max at 1, but not case for 3DMice)
+		
+		//deadzone TODO: first normalize to -1 to +1, THEN apply deadzone (otherwise deadZone is messed up with adaptive maxInput)
 		if(con[controller].deadZones[i]!=0)
 		{
 			if(Math.abs(mp[i])<con[controller].deadZones[i]){mp[i]=0.0;}
