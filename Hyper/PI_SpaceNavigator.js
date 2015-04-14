@@ -1,14 +1,16 @@
 
-/* HyperSonic's Cesium 3DMouse plugin (dependencies: PI_manager.js, PI_common.js, PI_math.js)
-scheme is a movement type, there are currently 4 types: 'sixDofTrue', 'sixDofCurved', 'fiveDof', 'fiveDofCamUp'
-Hyper.SpaceNav.spaceCon.push('sixDofTrue','fiveDof');
+/* HyperSonic's Cesium 3DMouse plugin (dependencies: PI_manager.js, PI_common.js, PI_math.js, PI_input.js)
+spaceCon is a movement type, there are currently 4 types: 'sixDofTrue', 'sixDofCurved', 'fiveDof', 'fiveDofCamUp'
 */
 Hyper.SpaceNav = function(){};
-Hyper.SpaceNav.init = function(){};
+
 Hyper.SpaceNav.inertia5dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
 Hyper.SpaceNav.inertia6dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
 Hyper.SpaceNav.spaceCon=[];//parallel with Hyper.input.controllers
-
+Hyper.SpaceNav.init = function()
+{
+	Hyper.SpaceNav.spaceCon.push('fiveDof','sixDofTrue');	//default
+};
 //declare/define utility functions
 Hyper.SpaceNav.getWishSpeed = function(mp,moveScale)
 {
@@ -69,6 +71,7 @@ Hyper.SpaceNav.lookThreeDof = function(speeds)
 	camera.look(camera.right,speeds[0]);
 	camera.look(camera.direction,speeds[1]);
 	camera.look(camera.up,speeds[2]);
+	//TODO pitch and yaw could be combined into one movement
 }
 Hyper.SpaceNav.lookTwoDof = function(speeds,GD_ENU_U)
 {
@@ -104,7 +107,11 @@ Hyper.SpaceNav.moveSixDofTrue = function(speeds)
 Hyper.SpaceNav.moveSixDofCurved = function(speeds,rotmat,radius)
 {
 	var camera = viewer.scene.camera;var CC3=Cesium.Cartesian3;var hm3=Hyper.math3D;
-	var GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());
+	
+	var GD_ENU_U = new CC3();
+	if((viewer.scene.mode==1)||(viewer.scene.mode==2)){GD_ENU_U = new CC3(0,0,1);} //Columbus and 2D
+	else{GD_ENU_U = Cesium.Matrix3.getColumn(rotmat,2,new CC3());}
+		
 	Hyper.SpaceNav.lookThreeDof([speeds[3],speeds[4],speeds[5]]); //look
 	
 	//calcs
@@ -254,12 +261,7 @@ Hyper.SpaceNav.main = function(clock)
 	//Cesium abbreviations
 	var camera = viewer.camera;var cp = camera.position;var hc=Hyper.common;
 	var con=Hyper.input.controllers;
-	
-	//Set camera HPR
-	//TODO: better way to determine upsideDown using local right.z up.z ? But you'll need to record the local vectors in the common module.
-	var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
-	Hyper.common.cameraHPR(hc.GD_rotmat);
-						
+		
 	//adjust camera
 	var myinput,wishSpeed,resultSpeed;
 	var dist = Hyper.SpaceNav.getDist();
@@ -279,10 +281,13 @@ Hyper.SpaceNav.main = function(clock)
 		if(Hyper.SpaceNav.spaceCon[i]=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
 		if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp" || Hyper.SpaceNav.spaceCon[i]=="fiveDof")
 		{
+			Hyper.common.cameraHPR(hc.GD_rotmat);
+			var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
 			if((wishSpeed[3]!=0)||(wishSpeed[5]!=0))
 			{
 				if(Math.abs(hc.mycam.rol)<Math.PI/2) //positive tilt
 				{
+					//TODO: figure out why in Columbus mode hc.mycam.rol is way off from viewer.scene.camera.roll
 					if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
 					Hyper.common.cameraHPR(hc.GD_rotmat); //refresh rol
 				}
@@ -299,16 +304,27 @@ Hyper.SpaceNav.main = function(clock)
 				var j=0;while(j<list.length)
 				{
 					if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.inertia5dof[list[j]]*=-1;}
-					if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[list[j]]*=-1;}
+					if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[list[j]]*=-1;}//does this make sense?
 					j+=1;
 				}
 			}
 			if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,true);}
 			if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,false);}
-			//adjust fov
-			camera.frustum.fov+= resultSpeed[4]/2; //FOV adjust since no roll
-			if(camera.frustum.fov<0.0000000001) {camera.frustum.fov=0.0000000001;}
-			if(camera.frustum.fov>=(Math.PI-0.001)) {camera.frustum.fov=Math.PI-0.001;}
+			
+			if((viewer.scene.mode==1)||(viewer.scene.mode==3))//TODO 2D will be moving frustum walls
+			{
+				//adjust fov (roll in wishspeed is ranged from -0.04 to +0.04)
+				var amount=Math.abs(resultSpeed[4]);
+				if(amount<0.03){}
+				else
+				{
+					var sign=1;if(resultSpeed[4]<0){sign=-1;}
+					var amount=(amount-0.03)*sign;
+					camera.frustum.fov+= amount*0.9; //FOV adjust since no roll
+					if(camera.frustum.fov<0.0000000001) {camera.frustum.fov=0.0000000001;}
+					if(camera.frustum.fov>=(Math.PI-0.001)) {camera.frustum.fov=Math.PI-0.001;}
+				}
+			}
 		}
 		i+=1;
 	}

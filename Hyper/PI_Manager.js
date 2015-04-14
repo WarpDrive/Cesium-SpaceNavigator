@@ -3,29 +3,13 @@ How to use:
 Add this script to your html (change src to where-ever this is located)
 <script type="text/javascript" src="./PI_manager.js"></script>
 
-Place the following code into the script portion (note: don't put var in front of viewer as it's declared here as a global)
-viewer = new Cesium.Viewer('cesiumContainer');
-Hyper.scriptLoader.initPlugins(Cesium);
-
-For sandcastle apps online put this in javascript code instead
-    var head = document.getElementsByTagName('head')[0];
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = "http://hyperscripts.atspace.tv/PI_manager.js";
-    //script.onreadystatechange = callback; //IE?
-    //script.onload = callback;
-    head.appendChild(script);
-setTimeout(function()
-{
-    viewer = new Cesium.Viewer('cesiumContainer');
-    Hyper.scriptLoader.initPlugins(Cesium);
-}, 3000);
+Place the following code into the script portion
+Hyper.scriptLoader.initPlugins();
 
 That's it! Just add/subtract plugins in initPlugins & checkAllLoaded
 */
 
 //Make these global. Sandcastle apps try to make these local which is no good for Plug-ins
-var Cesium,viewer;			//Cesium vars
 var Hyper = function(){};	//Umbrella object for core modules
 
 //scriptLoader object
@@ -45,11 +29,9 @@ Hyper.scriptLoader.loadScript = function(url, callback)
 	Hyper.scriptLoader.scriptCounter+=1;
 }
 //this is called by the app
-Hyper.scriptLoader.initPlugins = function(pcesium)
+Hyper.scriptLoader.initPlugins = function()
 {
 	hs=Hyper.scriptLoader;
-	//this is where plugins can declare globals as well
-	Cesium=pcesium;	//global reference to passed parameter
 	hs.loadScript(hs.baseURL+"Hyper/PI_HyperMath.js", hs.checkAllLoaded);								//used by all plugins
 	hs.loadScript(hs.baseURL+"Hyper/PI_Common.js", hs.checkAllLoaded);								//used by all plugins
 	hs.loadScript(hs.baseURL+"Hyper/PI_Input.js", hs.checkAllLoaded);									//used by all plugins
@@ -62,16 +44,15 @@ Hyper.scriptLoader.initPlugins = function(pcesium)
 	//potential problem: if a script loads very fast and calls it's callback before the next loadScript command then it could mess this up.
 	//Unlikely, but figure out a solution anyway.
 }
-//this is the callback
-Hyper.scriptLoader.checkAllLoaded = function()
+//inits
+Hyper.scriptLoader.inits = function()
 {
-	Hyper.scriptLoader.scriptCounter-=1;if(Hyper.scriptLoader.scriptCounter>0){return;} //don't init anything until all is loaded
 	Hyper.common.init();
+	Hyper.input.init();
 	Hyper.SpaceNav.init();
 	readOut.init();
 	//compass.init();
 	//StreetView.init();
-	Hyper.scriptLoader.callBack();//init extra stuff
 	viewer.clock.onTick.addEventListener(function(clock)
 	{
 		Hyper.common.main(clock);//run this before the others
@@ -80,5 +61,18 @@ Hyper.scriptLoader.checkAllLoaded = function()
 		//compass.main(clock);
 		//StreetView.main(clock);
 	});
-};
+}
+//wait till Cesium and viewer are defined (is this necessary?)
+Hyper.scriptLoader.waitForDefines = function()
+{
+	if((Cesium!=undefined)&&(viewer!=undefined))
+	{Hyper.scriptLoader.inits();}
+	else{setTimeout(Hyper.scriptLoader.waitForDefines,200);}
+}
+//this is the callback
+Hyper.scriptLoader.checkAllLoaded = function()
+{
+	Hyper.scriptLoader.scriptCounter-=1;if(Hyper.scriptLoader.scriptCounter>0){return;} //don't init anything until all is loaded
+	Hyper.scriptLoader.waitForDefines();
+}
 					

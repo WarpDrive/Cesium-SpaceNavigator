@@ -2,7 +2,7 @@ Navigate through Space at warp speed, orbit planets, fly over terrain, or take a
 
 Place in /Build folder of your Cesium install.
 
-I've created a 5DOF testapp here http://warpdrive.github.io/Apps/fiveDof.html To activate just press one of the 3Dmouse buttons. Some important caveats, if you do any of these in Chromium in Windows (Chrome and Opera)
+I've created a 5DOF testapp here http://warpdrive.github.io/Apps/testApp.html To activate just press one of the 3Dmouse buttons. Some important caveats, if you do any of these in Chromium in Windows (Chrome and Opera)
 -reload the webpage
 -minimize the browser 
 -switch tabs 
@@ -14,26 +14,15 @@ There's also this page which simply changes a few of the controller's properties
 
 With the 2 fiveDOF options roll action on the 3DMouse controls camera FOV. Also you can have any number of 3DMice working at the same time, I usually have the left 3DMouse for 6DOF and the right 3DMouse for 5DOF with FOV control. When you reboot the computer often times the 3DMice change order in the GamePad array, but all you have to do is swap device numbers in the controllers array to rectify.
 
-The other control options
-http://warpdrive.github.io/Apps/fiveDofCamUp.html
-http://warpdrive.github.io/Apps/sixDofCurved.html
-
-An example of dual controllers
-http://warpdrive.github.io/Apps/dualControllers.html
-
 Browser support
 
-Currently only Chromium engine browsers (Chrome and Opera) recoginze 3DMice.
+Currently only Chromium engine browsers (Chrome and Opera) recognize 3DMice.
 
 Even though they share the same interface, these browsers don't currently recognize 3DMice: https://msdn.microsoft.com/en-us/library/ie/dn753843(v=vs.85).aspx https://developer.mozilla.org/en-US/docs/Web/Guide/API/Gamepad (I can't get Cesium to work on Safari for Windows)
 
 I get the same results using the HTML rocks tester on the various browsers http://www.html5rocks.com/en/tutorials/doodles/gamepad/gamepad-tester/tester.html
 
-Things to note
--In 5DOF mode horizontal input moves along a circle rather than an ellipsoid geodesic, while vertical moves along the surface normal. For now a circular path seems to work just fine. Perhaps later I'll have the path conform to the ellipsoid surface, at least as an option Though I doubt anyone would really notice the difference.
-
 TODO list
 -keyboard support with ramping
--Adaptive maxInput sensing: keep track of the highest value inputed and set that as maxInput. This shouldn't have to be done as GamePad API is 'supposed' to set controllers from -1 to +1, but this currently isn't the case for 3DMice.
 -Adaptive height adjustment: each frame compare camera ellipsoid height difference between previous and current frame and adjust accordingly.
 

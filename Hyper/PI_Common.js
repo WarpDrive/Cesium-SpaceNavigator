@@ -32,11 +32,15 @@ Hyper.common.init = function()
 	hc.GD_rotmat = new CM3();		//in terms of Earth Fixed
 	hc.GC_rotmat = new CM3();		//in terms of Earth Fixed
 	hc.GC_carto = {lon:0,lat:0,rad:0};//geocentric cartographic
-	hc.mycam = {hea:0,pit:0,rol:0,til:0,Lfor:{x:0,y:0,z:0},Lrig:{x:0,y:0,z:0},Lup:{x:0,y:0,z:0}};//in terms of local EastNorthUp
+	hc.mycam = {hea:0,pit:0,rol:0,til:0,Ldir:{x:0,y:0,z:0},Lrig:{x:0,y:0,z:0},Lup:{x:0,y:0,z:0}};//in terms of local EastNorthUp
 	
 	hc.T_height=0;	//terrain height relative to reference ellipsoid
 	hc.lastSampleTime = 0; 
-	hc.terrainProvider = new Cesium.CesiumTerrainProvider ({url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'});	
+	hc.terrainProvider = new Cesium.CesiumTerrainProvider
+	({
+		url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
+		,requestVertexNormals : true
+	});	
 }
 Hyper.common.main = function(clock)
 {
@@ -87,7 +91,10 @@ Hyper.common.cameraHPR = function(comparedTO)
 {
 	//comparedTo is usually the local ENU in terms of world coordinates
 	//cam_matrix are the camera vectors in terms of world coordinates
+	//TODO: maybe allow the ability to replace cam_matrix with camera in terms of something else
+	//but remember that comparedTO needs to be in terms of the same thing
 	
+	var CC3=Cesium.Cartesian3;
 	if((viewer.scene.mode==1)||(viewer.scene.mode==2)) //Columbus & 2D
 	{comparedTO=[1,0,0,0,1,0,0,0,1];}
 	
@@ -96,8 +103,12 @@ Hyper.common.cameraHPR = function(comparedTO)
 	var Lcam_matrix = hm3.matrixToTransform(cam_matrix,comparedTO);	//cam_matrix 'in terms of' comparedTO
 	var temp = hm3.matrixToHPR(Lcam_matrix);
 	Hyper.common.mycam.hea=temp[0];Hyper.common.mycam.pit=temp[1];Hyper.common.mycam.rol=temp[2];
-	//TODO: also save local vec
-	//Hyper.common.mycam.Lfor,Hyper.common.mycam.Lrig,Hyper.common.mycam.Lup
+		
+	/* uncomment this if you find a good use for this
+	Hyper.common.mycam.Ldir=new CC3(Lcam_matrix[0],Lcam_matrix[1],Lcam_matrix[2]);
+	Hyper.common.mycam.Lrig=new CC3(Lcam_matrix[3],Lcam_matrix[4],Lcam_matrix[5]);
+	Hyper.common.mycam.Lup=new CC3(Lcam_matrix[6],Lcam_matrix[7],Lcam_matrix[8]);
+	*/
 }
 Hyper.common.updateHeights = function() //updates Hyper.common.T_height
 {
