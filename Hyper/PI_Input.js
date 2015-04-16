@@ -1,25 +1,34 @@
 /*
-How to add controllers to the array:
-Hyper.input controllers.push({device:1,showRaw:false,maxInput:46,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],scales:[1,-1,-1,-1,1,1]});
-Hyper.input controllers.push({device:0,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,2,0.01],scales:[1,-1,-1,-1,1,1]});
-Use controllers.pop() to remove a controller
-
 device is array index of the GamePad API
 showRaw:true displays raw input data in the console so you can figure out the maxInput of your device
 deadZones are used to disable small inputs from registering, they are in terms of maxInput rather than -1 to +1
 scales can be used to scale and reverse the various axis
-
-If you don't know device or maxInput set showRaw to true to figure it out by watching the console output (ctrl-shift-i)
-Later I may provide automatic discovery by continuously scanning all of the gamepad api devices
 */
 Hyper.input = function(){};
+Hyper.input.controllers=[];
+Hyper.input.keysDown=[];
+Hyper.input.mprev={x:0,y:0,t:0};
+Hyper.input.mspeed={x:0,y:0};
+
 Hyper.input.init = function()
 {
+	/*
+	scene.screenSpaceCameraController.enableRotate = false;
+	scene.screenSpaceCameraController.enableTranslate = false;
+	scene.screenSpaceCameraController.enableZoom = false;
+	scene.screenSpaceCameraController.enableTilt = false;
+	scene.screenSpaceCameraController.enableLook = false;
+	*/
 	//setup canvas keyboard interaction
 	viewer.canvas.tabIndex=1000; //setting tabIndex gives canvas the ability to have focus
 	viewer.canvas.onclick = function() {viewer.canvas.focus();} //clicking the canvas gives it focus
 	viewer.canvas.addEventListener("keydown", Hyper.input.canvasKeyDown, false); //when it has focus
-	viewer.canvas.addEventListener("onmousemove", Hyper.input.canvasMouseMove, false); //when it has focus
+	viewer.canvas.addEventListener("keyup", Hyper.input.canvasKeyUp, false); //when it has focus
+	viewer.canvas.addEventListener("mousedown", Hyper.input.canvasMouseDown, false); //when it has focus
+	viewer.canvas.addEventListener("mouseup", Hyper.input.canvasMouseUp, false); //when it has focus
+	viewer.canvas.addEventListener("mousemove", Hyper.input.canvasMouseMove, false); //when it has focus
+	viewer.canvas.addEventListener('DOMMouseScroll', Hyper.input.canvasMouseWheel, false); //when it has focus
+	viewer.canvas.addEventListener('mousewheel', Hyper.input.canvasMouseWheel, false); //when it has focus
 	Hyper.input.waitForConnection();
 }
 Hyper.input.waitForConnection = function()
@@ -32,8 +41,9 @@ Hyper.input.waitForConnection = function()
 	if(gp===undefined){setTimeout(function(){ Hyper.input.waitForConnection(); }, 1000);return;}
 	else
 	{
-		var i=0;while(i<navigator.getGamepads().length-1)//seems like the last in the list is always undefined
+		var i=0;while(i<navigator.getGamepads().length-1)//freezes on the last entry
 		{
+			//if(navigator.getGamepads()[i]===undefined){continue;}
 			if(navigator.getGamepads()[i].axes.length==6)
 			{
 				console.log("connecting "+navigator.getGamepads()[i].id);
@@ -49,18 +59,50 @@ Hyper.input.canvasKeyDown = function(e)
 {
 	e = e || window.event; //for IE9
 	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
-	if(e.keyCode==82){console.log("r pressed");} //r key
+	//if(e.keyCode==82){console.log("r pressed");} //r key
 }
-Hyper.input.canvasMouseMove= function(e)
+Hyper.input.canvasKeyUp = function(e)
 {
 	e = e || window.event; //for IE9
+	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
+	//if(e.keyCode==82){console.log("r un-pressed");} //r key
 }
-Hyper.input.controllers=[];
-Hyper.input.keysDown=[];
-Hyper.input.prevPageX=0;Hyper.input.deltaPageX=0;
-Hyper.input.prevPageY=0;Hyper.input.deltaPageY=0;
+Hyper.input.canvasMouseDown = function(e)
+{
+	e = e || window.event; //for IE9
+	//if(e.button==0){console.log("left pressed")};
+}
+Hyper.input.canvasMouseUp = function(e)
+{
+	e = e || window.event; //for IE9
+	//if(e.button==0){console.log("left un-pressed")};
+}
+Hyper.input.canvasMouseMove = function(e)
+{
+	var hi=Hyper.input;
+	e = e || window.event; //for IE9
+	var rect = viewer.canvas.getBoundingClientRect();
+	var x=e.clientX-rect.left;
+	var y=e.clientY-rect.top;
+	var t=new Date().getTime();
+	var tdelta=t-hi.mprev.t;
+	var mdelta={x:x-hi.mprev.x,y:y-hi.mprev.y};
+	var sx=mdelta.x/tdelta;var sy=mdelta.y/tdelta;
+	if(isNaN(sx)||isNaN(sy)){hi.mspeed={x:0,y:0};}
+	else{hi.mspeed={x:sx,y:sy};}
+	hi.mprev={x:x,y:y,t:t};
+}
+Hyper.input.canvasMouseWheel = function(e)
+{
+	e = e || window.event; //for IE9
+	//console.log("mousewheel");
+}
 Hyper.input.getInput = function(controller)	//TODO: have keyboard input as an option for those without joysticks/3DMice/Gamepads
 {	
+	//2DMouse
+	var t=new Date().getTime();
+	if(t>Hyper.input.mprev.t+100){Hyper.input.mspeed={x:0,y:0};}//no recent input so make it zero
+	//3DMouse
 	var con=Hyper.input.controllers[controller];
 	var mp = [0,0,0,0,0,0];var gp = navigator.getGamepads()[con.device];
 	if(!gp){return mp;}
@@ -88,21 +130,3 @@ Hyper.input.getInput = function(controller)	//TODO: have keyboard input as an op
 	}
 	return mp;
 }
-
-//TODO only do if text areas are .hasfocus()==false
-Hyper.input.mouseMove = function(e)	//for outside of the map3d window
-{
-	e = e || window.event;	//window.event is for InternetExp
-	//e.button, e.screenX, e.screenY, e.clientX, e.clientY, e.pageX, e.pageY
-	Hyper.input.deltaPageX=e.pageX-Hyper.input.prevPageX;Hyper.input.prevPageX=e.pageX;
-	Hyper.input.deltaPageY=e.pageY-Hyper.input.prevPageY;Hyper.input.prevPageY=e.pageY;
-	console.log("x ",Hyper.input.deltaPageX);
-	console.log("y ",Hyper.input.deltaPageY);
-}
-/*
-scene.screenSpaceCameraController.enableRotate = false;
-scene.screenSpaceCameraController.enableTranslate = false;
-scene.screenSpaceCameraController.enableZoom = false;
-scene.screenSpaceCameraController.enableTilt = false;
-scene.screenSpaceCameraController.enableLook = false;
-*/

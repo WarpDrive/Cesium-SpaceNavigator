@@ -6,29 +6,32 @@ Hyper.SpaceNav = function(){};
 
 Hyper.SpaceNav.inertia5dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
 Hyper.SpaceNav.inertia6dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
+Hyper.SpaceNav.smoothFactor=[0.08,0.08];//trans,rots
 Hyper.SpaceNav.spaceCon=[];//parallel with Hyper.input.controllers
 Hyper.SpaceNav.init = function()
 {
-	Hyper.SpaceNav.spaceCon.push('fiveDof','sixDofTrue');	//default
+	Hyper.SpaceNav.spaceCon.push('fiveDof','sixDofTrue');//default
+	viewer.scene.screenSpaceCameraController.minimumZoomDistance=2;//any lower and there's visual clipping issues
 };
 //declare/define utility functions
 Hyper.SpaceNav.getWishSpeed = function(mp,moveScale)
 {
-	var camera = viewer.scene.camera;
+	var fov = viewer.scene.camera.frustum.fov;
 	var wishspeed =
 	[
-		mp[0]*0.02*camera.frustum.fov*moveScale,
-		mp[1]*0.02*camera.frustum.fov*moveScale,
-		mp[2]*0.02*camera.frustum.fov*moveScale,
-		mp[3]*0.02*camera.frustum.fov,
+		mp[0]*0.02*fov*moveScale,
+		mp[1]*0.02*fov*moveScale,
+		mp[2]*0.02*fov*moveScale,
+		mp[3]*0.02*fov,
 		mp[4]*0.02*2,
-		mp[5]*0.02*camera.frustum.fov
+		mp[5]*0.02*fov
 	];
 	return wishspeed;
 }
 Hyper.SpaceNav.getResultSpeed = function(controller,wishspeed)
 {
-	var con=Hyper.input.controllers;
+	var hs=Hyper.SpaceNav;
+	var sc=Hyper.SpaceNav.spaceCon[controller];
 	var camera = viewer.scene.camera;var smoothfactor;
 	var ep=0.000001;
 	var veryclose,dif;
@@ -39,28 +42,22 @@ Hyper.SpaceNav.getResultSpeed = function(controller,wishspeed)
 	i=0;while(i<6)
 	{			
 		//get dif
-		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){dif = wishspeed[i]-Hyper.SpaceNav.inertia5dof[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){dif = wishspeed[i]-Hyper.SpaceNav.inertia5dof[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}	
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){dif = wishspeed[i]-Hyper.SpaceNav.inertia6dof[i];}		
+		if((sc=="fiveDof")||(sc=="fiveDofCamUp")){dif = wishspeed[i]-hs.inertia5dof[i];}
+		if((sc=="sixDofTrue")||(sc=="sixDofCurved")){dif = wishspeed[i]-hs.inertia6dof[i];}	
 		if(i<3){veryclose=ep;} //translations
 		else{veryclose=ep;} //looking
 		if(Math.abs(dif)>veryclose) //only smooth if there's a significant difference
 		{
-			if(i<3){smoothfactor=0.08;} //translations
-			else{smoothfactor=0.08;} //looking
+			if(i<3){smoothfactor=hs.smoothFactor[0];} //translations
+			else{smoothfactor=hs.smoothFactor[1];} //looking
 			
 			//apply smoothing (tweaked for 16ms frametime, should factor in the real frametime)
-			if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){resultSpeed[i] = Hyper.SpaceNav.inertia5dof[i] + dif * smoothfactor;}
-			if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){resultSpeed[i] = Hyper.SpaceNav.inertia5dof[i] + dif * smoothfactor;}
-			if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){resultSpeed[i] = Hyper.SpaceNav.inertia6dof[i] + dif * smoothfactor;}
-			if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){resultSpeed[i] = Hyper.SpaceNav.inertia6dof[i] + dif * smoothfactor;}
+			if((sc=="fiveDof")||(sc=="fiveDofCamUp")){resultSpeed[i] = hs.inertia5dof[i] + dif * smoothfactor;}
+			if((sc=="sixDofTrue")||(sc=="sixDofCurved")){resultSpeed[i] = hs.inertia6dof[i] + dif * smoothfactor;}
 		}
 		//save inertia for next frame
-		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDof"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="fiveDofCamUp"){Hyper.SpaceNav.inertia5dof[i] = resultSpeed[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];}
-		if(Hyper.SpaceNav.spaceCon[controller]=="sixDofCurved"){Hyper.SpaceNav.inertia6dof[i] = resultSpeed[i];}
+		if((sc=="fiveDof")||(sc=="fiveDofCamUp")){hs.inertia5dof[i] = resultSpeed[i];}
+		if((sc=="sixDofTrue")||(sc=="sixDofCurved")){hs.inertia6dof[i] = resultSpeed[i];}
 		i+=1;
 	}
 	return resultSpeed;
@@ -261,6 +258,7 @@ Hyper.SpaceNav.main = function(clock)
 	//Cesium abbreviations
 	var camera = viewer.camera;var cp = camera.position;var hc=Hyper.common;
 	var con=Hyper.input.controllers;
+	var hs=Hyper.SpaceNav;
 		
 	//adjust camera
 	var myinput,wishSpeed,resultSpeed;
@@ -269,17 +267,17 @@ Hyper.SpaceNav.main = function(clock)
 	var i=0;while(i<con.length)
 	{
 		myinput=Hyper.input.getInput(i);
-		wishSpeed=Hyper.SpaceNav.getWishSpeed(myinput,dist);		
-		resultSpeed=Hyper.SpaceNav.getResultSpeed(i,wishSpeed);
+		wishSpeed=hs.getWishSpeed(myinput,dist);		
+		resultSpeed=hs.getResultSpeed(i,wishSpeed);
 				
 		/* Schemes to add
 			-Tranforms other than Earth fixed, such as:
 				-ICRF so you can move like a satellite does
 				-around a satellite which in turn is moving in ICRF (become an astronaut repairing the ISS!)
 		*/
-		if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.moveSixDofTrue(resultSpeed);}
-		if(Hyper.SpaceNav.spaceCon[i]=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
-		if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp" || Hyper.SpaceNav.spaceCon[i]=="fiveDof")
+		if(hs.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.moveSixDofTrue(resultSpeed);}
+		if(hs.spaceCon[i]=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
+		if(hs.spaceCon[i]=="fiveDofCamUp" || Hyper.SpaceNav.spaceCon[i]=="fiveDof")
 		{
 			Hyper.common.cameraHPR(hc.GD_rotmat);
 			var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
@@ -289,12 +287,12 @@ Hyper.SpaceNav.main = function(clock)
 				{
 					//TODO: figure out why in Columbus mode hc.mycam.rol is way off from viewer.scene.camera.roll
 					if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
-					Hyper.common.cameraHPR(hc.GD_rotmat); //refresh rol
+					hc.cameraHPR(hc.GD_rotmat); //refresh rol
 				}
 				else //negative tilt
 				{
 					if(Math.abs(hc.mycam.rol)!=180){camera.look(camera.direction,-(Math.PI-hc.mycam.rol));}	//set roll 180
-					Hyper.common.cameraHPR(hc.GD_rotmat); //refresh rol
+					hc.cameraHPR(hc.GD_rotmat); //refresh rol
 				}
 			}
 			var nowUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){nowUpsideDown=1;}
@@ -303,8 +301,8 @@ Hyper.SpaceNav.main = function(clock)
 				var list=[2];//used to be more axis
 				var j=0;while(j<list.length)
 				{
-					if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.inertia5dof[list[j]]*=-1;}
-					if(Hyper.SpaceNav.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.inertia6dof[list[j]]*=-1;}//does this make sense?
+					if(hs.spaceCon[i]=="fiveDof"){hs.inertia5dof[list[j]]*=-1;}
+					//if(hs.spaceCon[i]=="sixDofTrue"){hs.inertia6dof[list[j]]*=-1;}//does this make sense?
 					j+=1;
 				}
 			}

@@ -19,7 +19,9 @@ Hyper.common.prevFrame;			//time of previous frame
 
 Hyper.common.init = function()
 {
-	viewer.scene.globe.enableLighting = true; //just a personal preference
+	//personal preference
+	viewer.scene.globe.enableLighting = true;
+	viewer.sceneModePicker.viewModel.duration=0;
 
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
 	//camera.frustum.far = 1e12;
@@ -85,7 +87,8 @@ Hyper.common.updateCelestial = function(clock)
 	hc.moonPositionEF = Hyper.math3D.vectorToTransform(hc.moonPosition,hc.icrfToFixed);
 	hc.sunPosition = Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(clock.currentTime);
 	hc.sunPositionEF = Hyper.math3D.vectorToTransform(hc.sunPosition,hc.icrfToFixed);
-	//perhaps these can be accessed via scene.sun and scene.moon?
+	//viewer.scene.moon._ellipsoidPrimitive._modelMatrix is Celestial or EF?
+	//viewer.scene.sun._boundingVolume.center is Celestial or EF?
 }
 Hyper.common.cameraHPR = function(comparedTO)
 {
