@@ -59,13 +59,31 @@ Hyper.input.canvasKeyDown = function(e)
 {
 	e = e || window.event; //for IE9
 	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
-	//if(e.keyCode==82){console.log("r pressed");} //r key
+	var hik=Hyper.input.keysDown;
+	var present=0;
+	var i=0;while(i<hik.length)
+	{
+		//shouldn't be necessary
+		if(e.keyCode==hik[i]){present=1;break}
+		i+=1;
+	}
+	if(present==0){hik.push(e.keyCode);}
 }
 Hyper.input.canvasKeyUp = function(e)
 {
 	e = e || window.event; //for IE9
 	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
-	//if(e.keyCode==82){console.log("r un-pressed");} //r key
+	var hik=Hyper.input.keysDown;
+	var i=0;while(i<hik.length)
+	{
+		if(e.keyCode==hik[i])
+		{
+			hik[i]=hik[hik.length-1];//copy last element to fill in it's place
+			hik.pop();//remove last element
+			break;//out of while loop
+		}
+		i+=1;
+	}
 }
 Hyper.input.canvasMouseDown = function(e)
 {

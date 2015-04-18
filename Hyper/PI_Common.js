@@ -19,9 +19,16 @@ Hyper.common.prevFrame;			//time of previous frame
 
 Hyper.common.init = function()
 {
-	//personal preference
+	//personal preferences
+	viewer.scene.terrainProvider = new Cesium.CesiumTerrainProvider
+	({
+		url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
+		,requestVertexNormals : true
+		/*,requestWaterMask: true*/
+	});	
 	viewer.scene.globe.enableLighting = true;
 	viewer.sceneModePicker.viewModel.duration=0;
+	//viewer.scene.globe.maximumScreenSpaceError = 1;
 
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
 	//camera.frustum.far = 1e12;
@@ -39,10 +46,7 @@ Hyper.common.init = function()
 	hc.T_height=0;	//terrain height relative to reference ellipsoid
 	hc.lastSampleTime = 0; 
 	hc.terrainProvider = new Cesium.CesiumTerrainProvider
-	({
-		url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
-		,requestVertexNormals : true
-	});	
+	({url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'});	
 }
 Hyper.common.main = function(clock)
 {
@@ -62,6 +66,7 @@ Hyper.common.updateFrames = function(clock)
 	
 	//can use this is all you want to know is up
 	//Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(position, normalScratch)
+	//investigate this: SceneTransforms.wgs84ToWindowCoordinates
 	
 	//Earth GeoCentric reference frame at camera
 	var horizP = Math.sqrt(cp.x * cp.x + cp.y * cp.y);

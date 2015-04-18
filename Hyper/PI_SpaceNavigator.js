@@ -1,63 +1,132 @@
 
 /* HyperSonic's Cesium 3DMouse plugin (dependencies: PI_manager.js, PI_common.js, PI_math.js, PI_input.js)
 spaceCon is a movement type, there are currently 4 types: 'sixDofTrue', 'sixDofCurved', 'fiveDof', 'fiveDofCamUp'
+
+TODO Schemes to add
+	-Tranforms other than Earth fixed, such as:
+		-ICRF so you can move like a satellite does
+		-around a satellite which in turn is moving in ICRF (become an astronaut repairing the ISS!)
 */
 Hyper.SpaceNav = function(){};
-
+Hyper.SpaceNav.moveTypes=['fiveDof','fiveDofCamUp','sixDofTrue','sixDofCurved'];
+Hyper.SpaceNav.keyboardCon=0;
+Hyper.SpaceNav.spaceCon=[];//parallel array with Hyper.input.controllers
 Hyper.SpaceNav.inertia5dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
+Hyper.SpaceNav.inertia5dofCamUp=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
 Hyper.SpaceNav.inertia6dof=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
-Hyper.SpaceNav.smoothFactor=[0.08,0.08];//trans,rots
-Hyper.SpaceNav.spaceCon=[];//parallel with Hyper.input.controllers
+Hyper.SpaceNav.inertia6dofCurved=[0,0,0,0,0,0];//x,y,z,Rx,Ry,Rz
+//Hyper.SpaceNav.smoothFactor=[0.08,0.08];//trans,rots
+//Hyper.SpaceNav.smoothFactorKeys=[0.08,0.08];//trans,rots
+Hyper.SpaceNav.baseTranSpeed=0.02;
+Hyper.SpaceNav.baseRotSpeed=0.02;
 Hyper.SpaceNav.init = function()
 {
 	Hyper.SpaceNav.spaceCon.push('fiveDof','sixDofTrue');//default
 	viewer.scene.screenSpaceCameraController.minimumZoomDistance=2;//any lower and there's visual clipping issues
-};
-//declare/define utility functions
+}
+	/*
+Hyper.SpaceNav.getSmoothFactor = function(i)
+{
+	var hs=Hyper.SpaceNav;
+	if(i==999)//keyboard
+	{return hs.smoothFactorKeys.slice();}
+	else{return hs.smoothFactor.slice();}
+
+	return [0.08,0.08];
+}
+	*/
+Hyper.SpaceNav.getMoveType = function(i)
+{
+	var hs=Hyper.SpaceNav;
+	var answer;
+	if(i==999)//keyboard
+	{answer=hs.moveTypes[hs.keyboardCon];}
+	else{answer=hs.spaceCon[i];}
+	return answer;
+}
+Hyper.SpaceNav.getInputs = function(i)
+{
+	var hi=Hyper.input;var hs=Hyper.SpaceNav;
+	var myinput=[0,0,0,0,0,0];
+	if(i==999)//keyboard
+	{
+		var j=0;while(j<hi.keysDown.length)
+		{
+			if(hi.keysDown[j]==83){myinput[0]=-1;}//s-moveleft
+			if(hi.keysDown[j]==70){myinput[0]=1;}//f-moveright
+			if(hi.keysDown[j]==69){myinput[1]=1;}//e-forward
+			if(hi.keysDown[j]==68){myinput[1]=-1;}//d-backward
+			if(hi.keysDown[j]==65){myinput[2]=1;}//a-moveup
+			if(hi.keysDown[j]==90){myinput[2]=-1;}//z-movedown
+			if(hi.keysDown[j]==73){myinput[3]=-1;}//i-pitchup
+			if(hi.keysDown[j]==75){myinput[3]=1;}//k-pitchdown
+			if(hi.keysDown[j]==85){myinput[4]=1;}//u-rollleft
+			if(hi.keysDown[j]==79){myinput[4]=-1;}//o-rollright
+			if(hi.keysDown[j]==74){myinput[5]=-1;}//j-yawleft
+			if(hi.keysDown[j]==76){myinput[5]=1;}//k-yawright
+			if(hi.keysDown[j]==77)//m-moveType
+			{
+				//TODO fix so it doesn't cycle many times per press
+				hs.keyboardCon+=1;if(hs.keyboardCon>hs.moveTypes.length-1){hs.keyboardCon=0;}
+			}
+			j+=1;
+		}
+	}
+	else{myinput=Hyper.input.getInput(i);}
+	return myinput;//clone?
+}
+
 Hyper.SpaceNav.getWishSpeed = function(mp,moveScale)
 {
+	var hsb=Hyper.SpaceNav.baseTranSpeed;
 	var fov = viewer.scene.camera.frustum.fov;
 	var wishspeed =
 	[
-		mp[0]*0.02*fov*moveScale,
-		mp[1]*0.02*fov*moveScale,
-		mp[2]*0.02*fov*moveScale,
-		mp[3]*0.02*fov,
-		mp[4]*0.02*2,
-		mp[5]*0.02*fov
+		mp[0]*hsb*fov*moveScale,
+		mp[1]*hsb*fov*moveScale,
+		mp[2]*hsb*fov*moveScale,
+		mp[3]*hsb*fov,
+		mp[4]*hsb*2,
+		mp[5]*hsb*fov
 	];
 	return wishspeed;
 }
-Hyper.SpaceNav.getResultSpeed = function(controller,wishspeed)
+Hyper.SpaceNav.getResultSpeed = function(moveType,wishspeed)
 {
 	var hs=Hyper.SpaceNav;
-	var sc=Hyper.SpaceNav.spaceCon[controller];
-	var camera = viewer.scene.camera;var smoothfactor;
+	//var sc=Hyper.SpaceNav.spaceCon[controller];
+	var camera = viewer.scene.camera;
 	var ep=0.000001;
-	var veryclose,dif;
+	var smoothfactor=[0.08,0.08];
+	var veryclose,dif,sm;
 	var resultSpeed=wishspeed.slice(); //clone
 	//DON'T init resultSpeed to all zeros, it will handle pauses badly!
 	
 	//smooth
-	i=0;while(i<6)
+	var i=0;while(i<6)
 	{			
 		//get dif
-		if((sc=="fiveDof")||(sc=="fiveDofCamUp")){dif = wishspeed[i]-hs.inertia5dof[i];}
-		if((sc=="sixDofTrue")||(sc=="sixDofCurved")){dif = wishspeed[i]-hs.inertia6dof[i];}	
+		if(moveType=="fiveDof"){dif = wishspeed[i]-hs.inertia5dof[i];}
+		if(moveType=="fiveDofCamUp"){dif = wishspeed[i]-hs.inertia5dofCamUp[i];}
+		if(moveType=="sixDofTrue"){dif = wishspeed[i]-hs.inertia6dof[i];}	
+		if(moveType=="sixDofCurved"){dif = wishspeed[i]-hs.inertia6dofCurved[i];}	
 		if(i<3){veryclose=ep;} //translations
 		else{veryclose=ep;} //looking
 		if(Math.abs(dif)>veryclose) //only smooth if there's a significant difference
 		{
-			if(i<3){smoothfactor=hs.smoothFactor[0];} //translations
-			else{smoothfactor=hs.smoothFactor[1];} //looking
-			
 			//apply smoothing (tweaked for 16ms frametime, should factor in the real frametime)
-			if((sc=="fiveDof")||(sc=="fiveDofCamUp")){resultSpeed[i] = hs.inertia5dof[i] + dif * smoothfactor;}
-			if((sc=="sixDofTrue")||(sc=="sixDofCurved")){resultSpeed[i] = hs.inertia6dof[i] + dif * smoothfactor;}
+			if(i<3){sm=smoothfactor[0];}else{sm=smoothfactor[1];}//extract tran or rot
+	
+		if(moveType=="fiveDof"){resultSpeed[i] = hs.inertia5dof[i] + dif * sm;}
+		if(moveType=="fiveDofCamUp"){resultSpeed[i] = hs.inertia5dofCamUp[i] + dif * sm;}
+		if(moveType=="sixDofTrue"){resultSpeed[i] = hs.inertia6dof[i] + dif * sm;}	
+		if(moveType=="sixDofCurved"){resultSpeed[i] = hs.inertia6dofCurved[i] + dif * sm;}
 		}
 		//save inertia for next frame
-		if((sc=="fiveDof")||(sc=="fiveDofCamUp")){hs.inertia5dof[i] = resultSpeed[i];}
-		if((sc=="sixDofTrue")||(sc=="sixDofCurved")){hs.inertia6dof[i] = resultSpeed[i];}
+		if(moveType=="fiveDof"){hs.inertia5dof[i] = resultSpeed[i];}
+		if(moveType=="fiveDofCamUp"){hs.inertia5dofCamUp[i] = resultSpeed[i];}
+		if(moveType=="sixDofTrue"){hs.inertia6dof[i] = resultSpeed[i];}
+		if(moveType=="sixDofCurved"){hs.inertia6dofCurved[i] = resultSpeed[i];}
 		i+=1;
 	}
 	return resultSpeed;
@@ -253,77 +322,144 @@ Hyper.SpaceNav.getDist = function()
 	
 	return dist;
 }
+Hyper.SpaceNav.arrayAdd = function(first,second)
+{
+	var result=[0,0,0,0,0,0];
+	var i=0;while(i<first.length)
+	{
+		result[i]=first[i]+second[i];
+		i+=1;
+	}
+	return result;
+}
+Hyper.SpaceNav.arrayNonZero = function(first)
+{
+	var nonZero=false;
+	var i=0;while(i<first.length)
+	{
+		if(first[i]!=0){nonZero=true;break;}
+		i+=1;
+	}
+	return nonZero;
+}
 Hyper.SpaceNav.main = function(clock)
 {
-	//Cesium abbreviations
-	var camera = viewer.camera;var cp = camera.position;var hc=Hyper.common;
-	var con=Hyper.input.controllers;
 	var hs=Hyper.SpaceNav;
-		
-	//adjust camera
-	var myinput,wishSpeed,resultSpeed;
-	var dist = Hyper.SpaceNav.getDist();
-		
-	var i=0;while(i<con.length)
+	var fiveDofInput=[0,0,0,0,0,0];
+	var fiveDofCamUpInput=[0,0,0,0,0,0];
+	var sixDofTrueInput=[0,0,0,0,0,0];
+	var sixDofCurvedInput=[0,0,0,0,0,0];
+	var moveType;
+	
+	//3DMice input
+	var i=0;while(i<Hyper.input.controllers.length)
 	{
-		myinput=Hyper.input.getInput(i);
-		wishSpeed=hs.getWishSpeed(myinput,dist);		
-		resultSpeed=hs.getResultSpeed(i,wishSpeed);
-				
-		/* Schemes to add
-			-Tranforms other than Earth fixed, such as:
-				-ICRF so you can move like a satellite does
-				-around a satellite which in turn is moving in ICRF (become an astronaut repairing the ISS!)
-		*/
-		if(hs.spaceCon[i]=="sixDofTrue"){Hyper.SpaceNav.moveSixDofTrue(resultSpeed);}
-		if(hs.spaceCon[i]=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
-		if(hs.spaceCon[i]=="fiveDofCamUp" || Hyper.SpaceNav.spaceCon[i]=="fiveDof")
-		{
-			Hyper.common.cameraHPR(hc.GD_rotmat);
-			var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
-			if((wishSpeed[3]!=0)||(wishSpeed[5]!=0))
-			{
-				if(Math.abs(hc.mycam.rol)<Math.PI/2) //positive tilt
-				{
-					//TODO: figure out why in Columbus mode hc.mycam.rol is way off from viewer.scene.camera.roll
-					if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
-					hc.cameraHPR(hc.GD_rotmat); //refresh rol
-				}
-				else //negative tilt
-				{
-					if(Math.abs(hc.mycam.rol)!=180){camera.look(camera.direction,-(Math.PI-hc.mycam.rol));}	//set roll 180
-					hc.cameraHPR(hc.GD_rotmat); //refresh rol
-				}
-			}
-			var nowUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){nowUpsideDown=1;}
-			if(nowUpsideDown!=prevUpsideDown)
-			{
-				var list=[2];//used to be more axis
-				var j=0;while(j<list.length)
-				{
-					if(hs.spaceCon[i]=="fiveDof"){hs.inertia5dof[list[j]]*=-1;}
-					//if(hs.spaceCon[i]=="sixDofTrue"){hs.inertia6dof[list[j]]*=-1;}//does this make sense?
-					j+=1;
-				}
-			}
-			if(Hyper.SpaceNav.spaceCon[i]=="fiveDofCamUp"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,true);}
-			if(Hyper.SpaceNav.spaceCon[i]=="fiveDof"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,false);}
-			
-			if((viewer.scene.mode==1)||(viewer.scene.mode==3))//TODO 2D will be moving frustum walls
-			{
-				//adjust fov (roll in wishspeed is ranged from -0.04 to +0.04)
-				var amount=Math.abs(resultSpeed[4]);
-				if(amount<0.03){}
-				else
-				{
-					var sign=1;if(resultSpeed[4]<0){sign=-1;}
-					var amount=(amount-0.03)*sign;
-					camera.frustum.fov+= amount*0.9; //FOV adjust since no roll
-					if(camera.frustum.fov<0.0000000001) {camera.frustum.fov=0.0000000001;}
-					if(camera.frustum.fov>=(Math.PI-0.001)) {camera.frustum.fov=Math.PI-0.001;}
-				}
-			}
-		}
+		moveType=hs.getMoveType(i);
+		if(moveType=='fiveDof'){fiveDofInput=hs.arrayAdd(hs.getInputs(i),fiveDofInput);}
+		if(moveType=='fiveDofCamUp'){fiveDofCamUpInput=hs.arrayAdd(hs.getInputs(i),fiveDofCamUpInput);}
+		if(moveType=='sixDofTrue'){sixDofTrueInput=hs.arrayAdd(hs.getInputs(i),sixDofTrueInput);}
+		if(moveType=='sixDofCurved'){sixDofCurvedInput=hs.arrayAdd(hs.getInputs(i),sixDofCurvedInput);}
 		i+=1;
+	}
+			
+	//keyboard input
+	moveType=hs.getMoveType(999);	
+	if(moveType=='fiveDof'){fiveDofInput=hs.arrayAdd(hs.getInputs(999),fiveDofInput);}
+	if(moveType=='fiveDofCamUp'){fiveDofCamUpInput=hs.arrayAdd(hs.getInputs(999),fiveDofCamUpInput);}
+	if(moveType=='sixDofTrue'){sixDofTrueInput=hs.arrayAdd(hs.getInputs(999),sixDofTrueInput);}
+	if(moveType=='sixDofCurved'){sixDofCurvedInput=hs.arrayAdd(hs.getInputs(999),sixDofCurvedInput);}	
+	
+	//act on the input summations
+	if(hs.arrayNonZero(fiveDofInput)||hs.arrayNonZero(hs.inertia5dof))
+	{hs.move(fiveDofInput,'fiveDof');}
+	if(hs.arrayNonZero(fiveDofCamUpInput)||hs.arrayNonZero(hs.inertia5dofCamUp))
+	{hs.move(fiveDofCamUpInput,'fiveDofCamUp');}
+	if(hs.arrayNonZero(sixDofTrueInput)||hs.arrayNonZero(hs.inertia6dof))
+	{hs.move(sixDofTrueInput,'sixDofTrue');}
+	if(hs.arrayNonZero(sixDofCurvedInput)||hs.arrayNonZero(hs.inertia6dofCurved))
+	{hs.move(sixDofCurvedInput,'sixDofCurved');}
+	
+	//why does activating 3dmouse lower max keyboard result speed, but not wishspeed?
+	//bcuz one is trying to set inertia to 0 while the other to 1
+	//solution: maybe add wishspeeds together first, then plug that into resultspeeds
+}
+Hyper.SpaceNav.move = function(myinput,moveType)
+{
+	//abbreviations
+	var hs=Hyper.SpaceNav;
+	
+	//get wish then result speed
+	var wishSpeed=[0,0,0,0,0,0];
+	var dist = hs.getDist();
+	wishSpeed=hs.getWishSpeed(myinput,dist);	
+
+	var resultSpeed=[0,0,0,0,0,0];	
+	resultSpeed=hs.getResultSpeed(moveType,wishSpeed);
+	
+	if(moveType=="sixDofTrue" || moveType=="sixDofCurved"){Hyper.SpaceNav.moveSixDof(moveType,resultSpeed)}
+	if(moveType=="fiveDofCamUp" || moveType=="fiveDof")
+	{
+		var turnAttempt=false;
+		if((wishSpeed[3]!=0)||(wishSpeed[5]!=0)){turnAttempt=true;}
+		Hyper.SpaceNav.moveFiveDof(moveType,resultSpeed,turnAttempt);
+	}
+}
+
+Hyper.SpaceNav.moveSixDof = function(moveType,resultSpeed)
+{
+	var hc=Hyper.common;
+	if(moveType=="sixDofTrue"){Hyper.SpaceNav.moveSixDofTrue(resultSpeed);}
+	if(moveType=="sixDofCurved"){Hyper.SpaceNav.moveSixDofCurved(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad);}
+}
+Hyper.SpaceNav.moveFiveDof = function(moveType,resultSpeed,turnAttempt)
+{
+	var hc=Hyper.common;var camera = viewer.camera;
+	var hs=Hyper.SpaceNav;
+	
+	Hyper.common.cameraHPR(hc.GD_rotmat);
+	var prevUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){prevUpsideDown=1;}
+	
+	//only 5DOF turn attempts force level roll (play nice with 6DOF)
+	if(turnAttempt==true)
+	{
+		if(Math.abs(hc.mycam.rol)<Math.PI/2) //positive tilt
+		{
+			if(hc.mycam.rol!=0){camera.look(camera.direction,hc.mycam.rol);}	//set roll 0
+			hc.cameraHPR(hc.GD_rotmat); //refresh rol
+		}
+		else //negative tilt
+		{
+			if(Math.abs(hc.mycam.rol)!=180){camera.look(camera.direction,-(Math.PI-hc.mycam.rol));}	//set roll 180
+			hc.cameraHPR(hc.GD_rotmat); //refresh rol
+		}
+	}
+	
+	//swap inertia when tilt sign changes
+	var nowUpsideDown=0;if(Math.abs(hc.mycam.rol)>Math.PI/2){nowUpsideDown=1;}
+	if(nowUpsideDown!=prevUpsideDown)
+	{
+		var list=[2];//used to be more axis
+		var j=0;while(j<list.length)
+		{
+			if(moveType=="fiveDof"){hs.inertia5dof[list[j]]*=-1;}//not camUp			
+			j+=1;
+		}
+	}
+	if(moveType=="fiveDofCamUp"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,true);}
+	if(moveType=="fiveDof"){Hyper.SpaceNav.move5DOF(resultSpeed,hc.GD_rotmat,hc.GC_carto.rad,false);}
+	
+	if((viewer.scene.mode==1)||(viewer.scene.mode==3))//TODO 2D will be moving frustum walls
+	{
+		//adjust fov (using roll)
+		var amount=Math.abs(resultSpeed[4]);
+		var max=hs.baseRotSpeed*2;//from wishspeed function
+		if(amount>(max*0.7)) //only activate on the last 30%
+		{
+			var sign=1;if(resultSpeed[4]<0){sign=-1;}
+			amount=(amount-(max*0.7))*sign;
+			camera.frustum.fov+= amount*camera.frustum.fov;
+			if(camera.frustum.fov<(0.001/180*Math.PI)) {camera.frustum.fov=0.001/180*Math.PI;}
+			if(camera.frustum.fov>(140/180*Math.PI)) {camera.frustum.fov=140/180*Math.PI;}
+		}
 	}
 }
