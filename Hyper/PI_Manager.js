@@ -21,7 +21,7 @@ Hyper.scriptLoader.initPlugins = function()
 	hs.loadScript(hs.baseURL+"Hyper/PI_Common.js", hs.checkAllLoaded);								//used by all plugins
 	hs.loadScript(hs.baseURL+"Hyper/PI_Input.js", hs.checkAllLoaded);								//used by all plugins
 	hs.loadScript(hs.baseURL+"Hyper/PI_SpaceNavigator.js", hs.checkAllLoaded);						//manual camera adjustment plugin
-	hs.loadScript(hs.baseURL+"Hyper/PI_ReadOut.js", hs.checkAllLoaded);								//show stats
+	//hs.loadScript(hs.baseURL+"Hyper/PI_ReadOut.js", hs.checkAllLoaded);								//show stats
 	//hs.loadScript(hs.baseURL+"Hyper/PI_Compass.js", hs.checkAllLoaded);							//show compass
 	//hs.loadScript("http://maps.googleapis.com/maps/api/js?sensor=false", hs.checkAllLoaded);	//needed for geocoder,maps,streetview
 	//hs.loadScript(hs.baseURL+"Hyper/PI_Streetview.js", hs.checkAllLoaded);
@@ -59,14 +59,14 @@ Hyper.scriptLoader.inits = function()
 	Hyper.common.init();
 	Hyper.input.init();
 	Hyper.SpaceNav.init();
-	readOut.init();
+	//readOut.init();
 	//compass.init();
 	//StreetView.init();
 	viewer.clock.onTick.addEventListener(function(clock)
 	{
 		Hyper.common.main(clock);//run this before the others
 		Hyper.SpaceNav.main(clock);
-		readOut.main(clock);
+		//readOut.main(clock);
 		//compass.main(clock);
 		//StreetView.main(clock);
 	});

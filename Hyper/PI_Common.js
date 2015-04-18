@@ -16,19 +16,23 @@ Hyper.common.T_height;			//terrain height
 Hyper.common.lastSampleTime;	//only used if using alternative get height method
 Hyper.common.terrainProvider;	//only used if using alternative get height method
 Hyper.common.prevFrame;			//time of previous frame
+Hyper.common.pref=false;		//personal preferences
 
 Hyper.common.init = function()
 {
 	//personal preferences
-	viewer.scene.terrainProvider = new Cesium.CesiumTerrainProvider
-	({
-		url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
-		,requestVertexNormals : true
-		/*,requestWaterMask: true*/
-	});	
-	viewer.scene.globe.enableLighting = true;
-	viewer.sceneModePicker.viewModel.duration=0;
-	//viewer.scene.globe.maximumScreenSpaceError = 1;
+	if(Hyper.common.pref==true)
+	{
+		viewer.scene.terrainProvider = new Cesium.CesiumTerrainProvider
+		({
+			url : '//cesiumjs.org/stk-terrain/tilesets/world/tiles'
+			,requestVertexNormals : true
+			,requestWaterMask: true
+		});	
+		viewer.scene.globe.enableLighting = true;
+		viewer.sceneModePicker.viewModel.duration=0;
+		//viewer.scene.globe.maximumScreenSpaceError = 1;
+	}
 
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
 	//camera.frustum.far = 1e12;
