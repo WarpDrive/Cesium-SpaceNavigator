@@ -2,6 +2,7 @@ Navigate through Space at warp speed, orbit planets, fly over terrain, or take a
 <br />
 Be sure to include PI_Manager.js in your app. Place all .js files into the same directory. Be sure to set Hyper.scriptLoader.baseURL in PI_Manager.js accordingly.
 <br />
+<br />
 NEW keyboard support! Click 3DWindow to activate. Where do you place your fingers? On the home keys http://en.wikipedia.org/wiki/Touch_typing <br />
 s-f left-right<br />
 e-d forward-back<br />
@@ -13,7 +14,7 @@ m changes movement mode<br />
 <br />
 I've created a testapp here http://warpdrive.github.io/Apps/testApp.html <br />
 <br />
-Using a 3DMice is a MUCH better experience as you can select 350 speeds as opposed to 1 (full speed). Also it requires only 1 hand, freeing the other hand to operate the 2DMouse. To activate 3DMice just press one of the 3Dmouse buttons.<br />
+Using a 3DMouse is a MUCH better experience as you can select 350 speeds as opposed to 1 (full speed). Also it requires only 1 hand, freeing the other hand to operate the 2DMouse. To activate a 3DMouse just press one of the 3Dmouse buttons.<br />
 Some important caveats, if you do any of these in Chromium in Windows (Chrome and Opera)<br />
 -reload the webpage<br />
 -minimize the browser <br />
