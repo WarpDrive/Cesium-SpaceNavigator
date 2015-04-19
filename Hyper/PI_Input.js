@@ -100,6 +100,8 @@ Hyper.input.canvasMouseMove = function(e)
 	var hi=Hyper.input;
 	e = e || window.event; //for IE9
 	var rect = viewer.canvas.getBoundingClientRect();
+	//viewer.canvas.clientHeight
+	//viewer.canvas.clientWidth
 	var x=e.clientX-rect.left;
 	var y=e.clientY-rect.top;
 	var t=new Date().getTime();
@@ -115,7 +117,7 @@ Hyper.input.canvasMouseWheel = function(e)
 	e = e || window.event; //for IE9
 	//console.log("mousewheel");
 }
-Hyper.input.getInput = function(controller)	//TODO: have keyboard input as an option for those without joysticks/3DMice/Gamepads
+Hyper.input.getInput = function(controller)
 {	
 	//2DMouse
 	var t=new Date().getTime();

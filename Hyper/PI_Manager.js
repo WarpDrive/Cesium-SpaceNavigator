@@ -46,7 +46,7 @@ Hyper.scriptLoader.checkAllLoaded = function()
 	Hyper.scriptLoader.scriptCounter-=1;if(Hyper.scriptLoader.scriptCounter>0){return;} //don't init anything until all is loaded
 	Hyper.scriptLoader.waitForDefines();
 }
-//wait till Cesium and viewer are defined (is this necessary?)
+//wait till Cesium and viewer are defined
 Hyper.scriptLoader.waitForDefines = function()
 {
 	if((Cesium!=undefined)&&(viewer!=undefined))

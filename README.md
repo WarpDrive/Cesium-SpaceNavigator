@@ -21,10 +21,15 @@ Some important caveats, if you do any of these in Chromium in Windows (Chrome an
 -switch tabs <br />
 It will lose connection to the 3DMouse and you have to close all tabs and reboot the browser to get it to work again. That's why I usually dedicate a browser (such as Opera) just for 3DMouse apps. I've reported this bug to Chromium in September 2014 but it is still present.<br />
 <br />
-To change the movement scheme type Hyper.SpaceNav.spaceCon[0]="string", replace "string" with one of the following "sixDofTrue" "sixDofCurved" "fiveDofCamUp" "fiveDof"<br />
 <br />
-<br />
+To change the movement scheme type for 1st 3DMouse do Hyper.SpaceNav.spaceCon[0]="string", replace "string" with one of the following "sixDofTrue" "sixDofCurved" "fiveDofCamUp" "fiveDof"<br />
+Hyper.SpaceNav.keyboardCon = number for keyboard (0='fiveDof',1='fiveDofCamUp',2='sixDofTrue',3='sixDofCurved' (or press m to cycle)
+"sixDofTrue" - Just regular 6DOF, this is best for Outer Space travelling<br />
+"sixDofCurved" - Movement is along Great Circles instead of 'true' Cartesian, sort of like a 'curved' Cartesian coordinate system<br />
+"fiveDof" - vertical controls alter radius while horizontal travels around Great circles<br />
+"fiveDofCamUp" -  like fiveDof, however your pitch angle dictates how vertical and horizontal movements are divied up<br />
 With the 2 fiveDOF options roll action on the 3DMouse controls camera FOV. Also you can have any number of 3DMice working at the same time, I usually have the left 3DMouse for 6DOF and the right 3DMouse for 5DOF with FOV control. <br />
+<br />
 <br />
 Browser support<br />
 <br />
@@ -37,3 +42,5 @@ I get the same results using the HTML rocks tester on the various browsers http:
 TODO list<br />
 -Adaptive height adjustment: each frame compare camera ellipsoid height difference between previous and current frame and adjust accordingly.<br />
 -2DMouse control over pitch and yaw<br />
+-Maybe have a movement scheme that moves along great circles, but maintains a north pole heading.<br />
+-Maybe have a movement scheme that moves along latitude and longitude lines<br />
