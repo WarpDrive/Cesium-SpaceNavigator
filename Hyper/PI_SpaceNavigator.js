@@ -64,11 +64,6 @@ Hyper.SpaceNav.getInputs = function(i)
 			if(hi.keysDown[j]==79){myinput[4]=-1;}//o-rollright
 			if(hi.keysDown[j]==74){myinput[5]=-1;}//j-yawleft
 			if(hi.keysDown[j]==76){myinput[5]=1;}//k-yawright
-			if(hi.keysDown[j]==77)//m-moveType
-			{
-				//TODO fix so it doesn't cycle many times per press
-				hs.keyboardCon+=1;if(hs.keyboardCon>hs.moveTypes.length-1){hs.keyboardCon=0;}
-			}
 			j+=1;
 		}
 	}
@@ -259,7 +254,16 @@ Hyper.SpaceNav.move5DOF = function(speeds,rotmat,radius,camUp)
 		}
 		else//3D
 		{
-			//TODO: have common module store camera ENU matrix so you don't have to recalculate
+			/*
+			//remove vertical component from camera.direction
+			var CC3=Cesium.Cartesian3;
+			var nadir = new CC3();var temp= new CC3();
+			Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(currentPos, nadir);
+			CC3.negate(nadir,nadir); //zenith to nadir
+			var scalar = CC3.dot(camera.direction,nadir);
+			CC3.multiplyByScalar(nadir,scalar,temp);
+			CC3.subtract(camera.direction,temp,temp); //remove downward component
+			*/
 			camDir=hm3.vectorToTransform(camera.direction,rotmat);
 			camDir.z=0;camDir=hm3.vectorUnitize(camDir);
 			camDir = hm3.vectorFromTransform(camDir,rotmat);

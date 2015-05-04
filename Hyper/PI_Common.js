@@ -1,3 +1,4 @@
+//Dependencies: a core Space Navigator file 
 //Purpose: calculate shared resources once per frame for greater efficiency
 Hyper.common = function(){};
 
@@ -16,7 +17,8 @@ Hyper.common.T_height;			//terrain height
 Hyper.common.lastSampleTime;	//only used if using alternative get height method
 Hyper.common.terrainProvider;	//only used if using alternative get height method
 Hyper.common.prevFrame;			//time of previous frame
-Hyper.common.pref=false;		//personal preferences
+Hyper.common.pref=false;		//personal preferences (false for official releases)
+Hyper.common.sunEllipsoid;		//3D Sun
 
 Hyper.common.init = function()
 {
@@ -29,13 +31,34 @@ Hyper.common.init = function()
 			,requestVertexNormals : true
 			,requestWaterMask: true
 		});	
+		viewer.scene.skyBox.show = true;
 		viewer.scene.globe.enableLighting = true;
 		viewer.sceneModePicker.viewModel.duration=0;
 		//viewer.scene.globe.maximumScreenSpaceError = 1;
-	}
 
+		//3D Sun from Ed Mackey
+		var material = Cesium.Material.fromType(Cesium.Material.RimLightingType);
+		material.uniforms.color = Cesium.Color.YELLOW;
+		Hyper.common.sunEllipsoid = viewer.scene.primitives.add(new Cesium.EllipsoidPrimitive({
+			center: new Cesium.Cartesian3(),  // For now, place the Sun at the origin.
+			radii: new Cesium.Cartesian3(6.955e8, 6.955e8, 6.955e8),
+			material: material
+		}));
+		Hyper.common.sunEllipsoid.modelMatrix=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; //Cesium.Matrix4.IDENTITY;
+		
+		//Set up inter-planetary travel (labels are in Earth Fixed frame)
+		viewer.scene.camera.frustum.far = 1e12;
+		viewer.entities.add({
+		position : Cesium.Cartesian3.fromDegrees(0,90)
+		,label : {
+			text : 'Earth'
+			,scale : 1.0
+		}
+		});
+		//TODO make label for Luna and Sol
+	}
+	
 	var CC3=Cesium.Cartesian3;var CM3=Cesium.Matrix3;var hc=Hyper.common;
-	//camera.frustum.far = 1e12;
 	hc.icrfToFixed = new CM3();		//shares origin with Earth Fixed	
 	hc.moonPosition=new CC3();		//in terms of ICRF
 	hc.sunPosition=new CC3();		//in terms of ICRF
@@ -56,6 +79,7 @@ Hyper.common.main = function(clock)
 {
 	var hc=Hyper.common;
 	hc.prevFrame=new Date().getTime();
+	Hyper.common.cameraHPR(hc.GD_rotmat);
 	hc.updateFrames(clock);
 	hc.updateCelestial(clock);//update icrfToFixed first
 	hc.updateHeights();
@@ -96,6 +120,14 @@ Hyper.common.updateCelestial = function(clock)
 	hc.moonPositionEF = Hyper.math3D.vectorToTransform(hc.moonPosition,hc.icrfToFixed);
 	hc.sunPosition = Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(clock.currentTime);
 	hc.sunPositionEF = Hyper.math3D.vectorToTransform(hc.sunPosition,hc.icrfToFixed);
+	
+	//we want to travel to an ellipsoid not a sprite
+	if(Hyper.common.pref==true)
+	{
+		Cesium.Matrix4.fromRotationTranslation(Cesium.Matrix3.IDENTITY, hc.sunPositionEF, hc.sunEllipsoid.modelMatrix);
+	}
+	
+	//tap into Cesium's calculation results
 	//viewer.scene.moon._ellipsoidPrimitive._modelMatrix is Celestial or EF?
 	//viewer.scene.sun._boundingVolume.center is Celestial or EF?
 }
@@ -116,7 +148,7 @@ Hyper.common.cameraHPR = function(comparedTO)
 	var temp = hm3.matrixToHPR(Lcam_matrix);
 	Hyper.common.mycam.hea=temp[0];Hyper.common.mycam.pit=temp[1];Hyper.common.mycam.rol=temp[2];
 		
-	/* uncomment this if you find a good use for this
+	/* uncomment this if you find a need for this info
 	Hyper.common.mycam.Ldir=new CC3(Lcam_matrix[0],Lcam_matrix[1],Lcam_matrix[2]);
 	Hyper.common.mycam.Lrig=new CC3(Lcam_matrix[3],Lcam_matrix[4],Lcam_matrix[5]);
 	Hyper.common.mycam.Lup=new CC3(Lcam_matrix[6],Lcam_matrix[7],Lcam_matrix[8]);

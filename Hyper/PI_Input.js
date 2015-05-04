@@ -10,6 +10,7 @@ Hyper.input.keysDown=[];
 Hyper.input.mprev={x:0,y:0,t:0};
 Hyper.input.mspeed={x:0,y:0};
 
+//TODO: check for double click (1st click starts a timer, if 2nd click occurs while timer active)
 Hyper.input.init = function()
 {
 	/*
@@ -19,17 +20,42 @@ Hyper.input.init = function()
 	scene.screenSpaceCameraController.enableTilt = false;
 	scene.screenSpaceCameraController.enableLook = false;
 	*/
+	
 	//setup canvas keyboard interaction
 	viewer.canvas.tabIndex=1000; //setting tabIndex gives canvas the ability to have focus
 	viewer.canvas.onclick = function() {viewer.canvas.focus();} //clicking the canvas gives it focus
-	viewer.canvas.addEventListener("keydown", Hyper.input.canvasKeyDown, false); //when it has focus
-	viewer.canvas.addEventListener("keyup", Hyper.input.canvasKeyUp, false); //when it has focus
-	viewer.canvas.addEventListener("mousedown", Hyper.input.canvasMouseDown, false); //when it has focus
-	viewer.canvas.addEventListener("mouseup", Hyper.input.canvasMouseUp, false); //when it has focus
-	viewer.canvas.addEventListener("mousemove", Hyper.input.canvasMouseMove, false); //when it has focus
-	viewer.canvas.addEventListener('DOMMouseScroll', Hyper.input.canvasMouseWheel, false); //when it has focus
-	viewer.canvas.addEventListener('mousewheel', Hyper.input.canvasMouseWheel, false); //when it has focus
+	viewer.canvas.addEventListener("keydown", function(e){Hyper.input.keyDown(e,"canvas");}, false);
+	viewer.canvas.addEventListener("keyup", function(e){Hyper.input.keyUp(e,"canvas");}, false); 
+	viewer.canvas.addEventListener("mousedown", Hyper.input.canvasMouseDown, false); 
+	viewer.canvas.addEventListener("mouseup", Hyper.input.canvasMouseUp, false); 
+	viewer.canvas.addEventListener("mousemove", Hyper.input.canvasMouseMove, false);
+	viewer.canvas.addEventListener('DOMMouseScroll', Hyper.input.canvasMouseWheel, false);
+	viewer.canvas.addEventListener('mousewheel', Hyper.input.canvasMouseWheel, false);
+	
+	//setup timeline interaction
+	viewer.timeline._timeBarEle.tabIndex=1001;
+	viewer.timeline._timeBarEle.onclick = function() {viewer.timeline._timeBarEle.focus();}
+	viewer.timeline._timeBarEle.addEventListener("keydown", function(e){Hyper.input.keyDown(e,"timeline");}, false); 
+	viewer.timeline._timeBarEle.addEventListener("keyup", function(e){Hyper.input.keyUp(e,"timeline");}, false); 
+	//createMouseWheelCallback in Timeline.js
+	//JulianDate.secondsDifference in JulianDate.js
+	
+	//3DMice setup
 	Hyper.input.waitForConnection();
+	
+	//viewer.clock.multiplier	//sim speed
+	//viewer.clock.currentTime	//sim time
+	//shuttleRing
+	
+	//viewer.timeline._topDiv
+	//viewer.timeline._timeBarEle //graphic
+	//viewer.timeline._startJulian.dayNumber
+	//viewer.timeline._startJulian.secondsOfDay
+	//viewer.timeline._endJulian.dayNumber
+	//viewer.timeline._endJulian.secondsOfDay
+	//viewer.timeline._scrubJulian
+	//viewer.timeline._timeBarSecondsSpan //range(read only)
+	//document.activeElement
 }
 Hyper.input.waitForConnection = function()
 {
@@ -48,17 +74,35 @@ Hyper.input.waitForConnection = function()
 			{
 				console.log("connecting "+navigator.getGamepads()[i].id);
 				Hyper.input.controllers.push({
-				device:i,showRaw:false,maxInput:4,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],
+				device:i,showRaw:false,maxInput:1,deadZones:[0.01,0.01,0.01,0.01,0.01,0.01],
 				scales:[1,-1,-1,-1,1,1]});
 			}
 			i+=1;
 		}
 	}
 }
-Hyper.input.canvasKeyDown = function(e)
+Hyper.input.callAction = function(code,source)	//TODO: move to PI_inputBind.js
+{
+	var hs=Hyper.SpaceNav;
+	if(source=='timeline')
+	{
+		console.log("pressed "+code+" on timeline");
+	}
+	if(source=='canvas')
+	{
+		if(code==77){hs.keyboardCon+=1;if(hs.keyboardCon>hs.moveTypes.length-1){hs.keyboardCon=0;}}//m movetype
+		if(code==78){viewer.scene.camera.look(viewer.scene.camera.direction,Math.PI);}//n flip
+	}
+}
+Hyper.input.keyDown = function(e,source)
 {
 	e = e || window.event; //for IE9
 	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
+	
+	//trigger functions
+	Hyper.input.callAction(e.keyCode,source);
+	
+	//update keysDown list
 	var hik=Hyper.input.keysDown;
 	var present=0;
 	var i=0;while(i<hik.length)
@@ -69,10 +113,12 @@ Hyper.input.canvasKeyDown = function(e)
 	}
 	if(present==0){hik.push(e.keyCode);}
 }
-Hyper.input.canvasKeyUp = function(e)
+Hyper.input.keyUp = function(e,source)
 {
 	e = e || window.event; //for IE9
 	//e.keyCode, e.altKey, e.ctrlKey, e.shiftKey
+	
+	//update keysDown list
 	var hik=Hyper.input.keysDown;
 	var i=0;while(i<hik.length)
 	{
@@ -129,10 +175,12 @@ Hyper.input.getInput = function(controller)
 	if(con.showRaw==true){console.log(gp.axes);}
 	i=0;while(i<gp.axes.length)
 	{
-		//get input then unitize it (ya GamePad API supposed to max at 1, but that's currently not the case for 3DMice)
+		//get input
 		mp[i]=gp.axes[i];
+		
+		//unitize it (fix for older browsers which got the wrong max input)
 		if(Math.abs(mp[i])>con.maxInput){con.maxInput=Math.abs(mp[i]);} //determine true maxInput 
-		mp[i]/=con.maxInput; //convert to -1 to +1 (GamePAD API is supposed to do this already)
+		mp[i]/=con.maxInput; //convert to -1 to +1
 		
 		//deal with deadzone
 		if(Math.abs(mp[i])<con.deadZones[i]){mp[i]=0.0;}
@@ -150,3 +198,8 @@ Hyper.input.getInput = function(controller)
 	}
 	return mp;
 }
+/*
+	.addEventListener('touchstart', onTouchStart, false);
+	.addEventListener('touchmove', onTouchMove, false);
+	.addEventListener('touchend', onTouchEnd, false);
+*/

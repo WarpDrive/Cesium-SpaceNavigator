@@ -1,3 +1,4 @@
+2015 May 04 - GamePad API for Chrome is fixed! This update is for normalizing maxInput to 1.
 2015 April 18 - Keyboard support!<br />
 2015 April 16 - Just need to include a file to get this plugin working, nothing else!<br />
 2015 April 13 - added auto detection for 6 axes devices and sets default settings.<br />
