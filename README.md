@@ -1,3 +1,7 @@
+UPDATE: I haven't touched this in over 4 years and just noticed that it didn't work on new browsers, I got it working again just by altering a few lines (gamepad object detection) and will update on GitHub eventually. For now here's a video collection using a SpaceNavigator with Cesium:
+
+https://www.youtube.com/playlist?list=PLu7ubzox5Ny6JIhF_tfsOuCMDtsro6ENh
+
 Navigate through Space at warp speed, orbit planets, fly over terrain, or take a relaxing stroll through a park.<br />
 <br />
 Be sure to include PI_Manager.js in your app. Place all .js files into the same directory. Be sure to set Hyper.scriptLoader.baseURL in PI_Manager.js accordingly.
